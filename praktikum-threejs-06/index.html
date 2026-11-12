@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="icon"
+    type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d94826'/%3E%3Cpath d='M6 17L16 8l10 9v9H6z' fill='%23f8fafc'/%3E%3C/svg%3E"
+  />
+  <title>Asrama ITS — Communal Hall &amp; Canteen 3D</title>
+</head>
+
+<body>
+  <div id="app">
+    <div id="hud">
+      <div class="hud-header">
+        <strong>Asrama ITS — Communal Hall &amp; Canteen</strong>
+        <span id="info">Drag: Orbit &middot; Right-drag: Pan &middot; Scroll: Zoom &middot; Keys 1–9: Views</span>
+      </div>
+      <div id="camera-bar" role="toolbar" aria-label="Camera Presets"></div>
+    </div>
+
+    <div id="control-panel" aria-label="Scene controls">
+      <div class="control-row">
+        <label for="time-slider">Time of day</label>
+        <output id="time-label" for="time-slider">15:30</output>
+      </div>
+      <input id="time-slider" type="range" min="5.5" max="21" step="0.05" value="15.5" />
+      <div class="chip-row" id="time-chips">
+        <button type="button" class="chip" data-time="7">Morning</button>
+        <button type="button" class="chip" data-time="12">Noon</button>
+        <button type="button" class="chip" data-time="15.5">Afternoon</button>
+        <button type="button" class="chip" data-time="17.45">Golden hour</button>
+        <button type="button" class="chip" data-time="19.5">Night</button>
+      </div>
+      <div class="control-row split">
+        <label for="quality-select">Quality</label>
+        <select id="quality-select">
+          <option value="ultra">Ultra</option>
+          <option value="high" selected>High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <button type="button" id="walk-btn" class="chip strong" title="Walk around at eye level (F)">Walk mode (F)</button>
+      </div>
+    </div>
+
+    <div id="stats" aria-live="off"></div>
+
+    <div id="walk-hint" hidden>
+      <strong>Walk mode</strong>
+      W A S D move &middot; Mouse or &larr; &rarr; look &middot; Shift run &middot; F or Esc exit
+    </div>
+
+    <div id="loading">
+      <div class="loading-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <strong>Building the canteen…</strong>
+        <span id="loading-step">Generating procedural textures</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
