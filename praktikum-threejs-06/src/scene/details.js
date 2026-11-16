@@ -786,7 +786,7 @@ function buildSignage(spec, materials, M, T) {
   banner.add(box(0.66, 0.05, 0.1, M.frameAlu, 0, 0.06, 0));
   banner.add(rod([0, 0.06, -0.05], [0, 1.72, -0.02], 0.008, M.frameAlu, { radial: 5 }));
   banner.add(box(0.62, 0.02, 0.02, M.frameAlu, 0, 1.73, -0.008, { cast: false }));
-  banner.position.set(9.25, 0, -1.72);
+  banner.position.set(8.55, 0, -1.78);
   banner.rotation.y = -0.12;
   g.add(banner);
 

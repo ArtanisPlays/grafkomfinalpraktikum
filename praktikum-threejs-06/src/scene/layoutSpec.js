@@ -288,7 +288,7 @@ export const LAYOUT_SPEC = {
     pottedPlants: [
       { x: 3.1, z: -3.9, size: "medium" },
       { x: 4.8, z: -3.9, size: "medium" },
-      { x: 10.6, z: -1.9, size: "tall" },
+      { x: 10.15, z: -1.92, size: "tall" },
       { x: 12.25, z: 2.55, size: "tall" }
     ],
     // Tabletop laptops, bottles, water gallons
