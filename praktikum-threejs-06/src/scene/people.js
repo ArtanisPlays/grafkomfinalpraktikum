@@ -693,8 +693,8 @@ export function createPeople(layoutSpec, materials) {
   dropSandals(-11.6, 7.0, 6, 1.6, 0.5);
   dropSandals(-4.2, 7.05, 4, 2.4, 0.4);
   dropSandals(4.6, 7.0, 3, 1.6, 0.4);
-  dropSandals(-6.4, 3.75, 1, 0.3, 0.2);
-  dropSandals(0.4, 3.8, 1, 0.3, 0.2);
+  dropSandals(-6.9, 4.05, 1, 0.3, 0.2);
+  dropSandals(-0.15, 4.05, 1, 0.3, 0.2);
   dropSandals(-9.2, 6.8, 2, 0.8, 0.2);
 
   /* ---------- Canteen benches ---------- */

@@ -221,25 +221,26 @@ export const LAYOUT_SPEC = {
   furniture: {
     // Iconic weathered orange-red low divider wall
     redDividerWall: {
-      mainSegment: { minX: -11.5, maxX: 2.2, z: 0.9, thickness: 0.22, height: 0.92 },
-      westReturn: { x: -11.5, minZ: -1.6, maxZ: 0.9, thickness: 0.22, height: 0.92 }
+      mainSegment: { minX: -11.5, maxX: 2.2, z: 1.6, thickness: 0.22, height: 0.92 },
+      westReturn: { x: -11.5, minZ: -1.6, maxZ: 1.6, thickness: 0.22, height: 0.92 }
     },
 
-    // 3 long white-frame / dark-wood bench dining tables in the canteen aisle behind red wall
+    // 3 long white-frame / dark-wood bench dining tables lined up against the north face of
+    // the red wall, leaving a ~3 m wide aisle between their benches and the stall counters
     canteenBenchTables: [
-      { x: -7.2, z: -0.35, length: 3.0, width: 0.72, height: 0.74 },
-      { x: -3.5, z: -0.35, length: 3.0, width: 0.72, height: 0.74 },
-      { x: 0.2, z: -0.35, length: 3.0, width: 0.72, height: 0.74 }
+      { x: -7.2, z: 0.69, length: 3.0, width: 0.72, height: 0.74 },
+      { x: -3.5, z: 0.69, length: 3.0, width: 0.72, height: 0.74 },
+      { x: 0.2, z: 0.69, length: 3.0, width: 0.72, height: 0.74 }
     ],
 
     // Low wooden lesehan study tables (y=0 floor, height ~0.34m)
     lesehanTables: [
       // Row near red wall
-      { x: -9.6, z: 2.2, w: 1.5, d: 0.95, rotY: 0, tilted: false },
-      { x: -6.2, z: 2.2, w: 1.5, d: 0.95, rotY: 0.02, tilted: false },
-      { x: -2.8, z: 2.2, w: 1.5, d: 0.95, rotY: -0.01, tilted: false },
-      { x: 0.6, z: 2.2, w: 1.5, d: 0.95, rotY: 0, tilted: false },
-      { x: 4.2, z: 2.2, w: 1.5, d: 0.95, rotY: 0.03, tilted: false },
+      { x: -9.6, z: 2.85, w: 1.5, d: 0.95, rotY: 0, tilted: false },
+      { x: -6.2, z: 2.85, w: 1.5, d: 0.95, rotY: 0.02, tilted: false },
+      { x: -2.8, z: 2.85, w: 1.5, d: 0.95, rotY: -0.01, tilted: false },
+      { x: 0.6, z: 2.85, w: 1.5, d: 0.95, rotY: 0, tilted: false },
+      { x: 4.2, z: 2.85, w: 1.5, d: 0.95, rotY: 0.03, tilted: false },
       // Mid-hall row (including 2 tilted up on edge as seen in photos)
       { x: -9.5, z: 5.2, w: 1.5, d: 0.95, rotY: 0.05, tilted: false },
       { x: -5.5, z: 5.0, w: 1.5, d: 0.95, rotY: 0.15, tilted: true },
@@ -268,7 +269,7 @@ export const LAYOUT_SPEC = {
     printingStation: { x: 2.75, z: -3.2, rotY: 0 },
     wallDisplayCabinet: { x: 3.9, y: 2.45, z: -4.05, w: 3.0, h: 0.85, d: 0.28 },
     // Blue standing warning sign near stalls/red wall ("DILARANG MEMBAWA MAKANAN/MINUMAN...")
-    blueRuleSign: { x: -1.8, z: 0.35, rotY: 0.08 },
+    blueRuleSign: { x: 2.95, z: 1.15, rotY: 0.08 },
     // Yellow PERHATIAN boards on curved staircase drum & beside printing station
     perhatianSigns: [
       { onStairDrum: true, facing: -1.0, y: 1.86, title: "PERHATIAN" },
