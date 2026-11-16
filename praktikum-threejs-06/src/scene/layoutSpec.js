@@ -144,19 +144,21 @@ export const LAYOUT_SPEC = {
     ]
   },
 
-  // Curved / L-turn White Staircase connecting Wing B floor (y=0) to Mezzanine (y=3.35)
+  // White switchback staircase, Wing B floor (y=0) -> mezzanine (y=3.35).
+  // The lower (east) flight climbs south from z = northZ to a half-round landing drum,
+  // the upper (west) flight returns north and reaches the mezzanine over a short landing
+  // tongue. The stair stands clear of the hall columns and stays south of the mezzanine
+  // edge, so the walkway in front of the glass office runs straight through into Wing B.
   staircase: {
-    startX: 13.8,
-    startZ: -4.2,
-    endX: 13.8,
-    endZ: 0.6,
-    landingX: 11.5,
-    landingZ: 0.6,
-    width: 1.55,
-    stepCount: 16,
+    northZ: -0.9,
+    upperFlightX: 13.4,
+    lowerFlightX: 14.7,
+    flightWidth: 1.1,
+    stepsPerFlight: 10,
+    stepRun: 0.28,
     totalRise: 3.35,
-    curvedDrumCenter: { x: 12.6, z: 1.5 },
-    curvedDrumRadius: 1.85
+    wallThickness: 0.15,
+    parapetHeight: 0.95
   },
 
   // Glass-walled Office ("Kantor Pelayanan Asrama")
@@ -269,7 +271,7 @@ export const LAYOUT_SPEC = {
     blueRuleSign: { x: -1.8, z: 0.35, rotY: 0.08 },
     // Yellow PERHATIAN boards on curved staircase drum & beside printing station
     perhatianSigns: [
-      { x: 11.21, y: 1.86, z: 2.24, rotY: -1.12, title: "PERHATIAN" },
+      { onStairDrum: true, facing: -1.0, y: 1.86, title: "PERHATIAN" },
       { x: 3.55, y: 1.75, z: -4.15, rotY: 0, title: "PERHATIAN" }
     ],
     // Fire extinguishers flush on north service wall & west mezzanine-edge column
@@ -287,7 +289,7 @@ export const LAYOUT_SPEC = {
       { x: 3.1, z: -3.9, size: "medium" },
       { x: 4.8, z: -3.9, size: "medium" },
       { x: 10.6, z: -1.9, size: "tall" },
-      { x: 11.3, z: 0.3, size: "medium" }
+      { x: 12.25, z: 2.55, size: "tall" }
     ],
     // Tabletop laptops, bottles, water gallons
     tableAccessories: [
@@ -373,8 +375,8 @@ export const LAYOUT_SPEC = {
     {
       id: "staircase",
       label: "5. Staircase & Office",
-      position: [5.2, 2.2, 1.8],
-      target: [11.8, 1.6, -0.6]
+      position: [7.4, 2.1, 3.4],
+      target: [13.2, 1.7, 0.2]
     },
     {
       id: "outdoor",
@@ -402,3 +404,35 @@ export const LAYOUT_SPEC = {
     }
   ]
 };
+
+/**
+ * Derived staircase dimensions shared by the building, detail and prop builders,
+ * so nothing has to hard-code where the flights or the landing drum sit.
+ */
+export function getStairMetrics(spec = LAYOUT_SPEC) {
+  const st = spec.staircase;
+  const half = st.flightWidth / 2;
+  const innerWestX = st.upperFlightX - half;
+  const innerEastX = st.lowerFlightX + half;
+  const midY = st.totalRise / 2;
+  const drumZ = st.northZ + st.stepsPerFlight * st.stepRun;
+  const drumInnerR = (innerEastX - innerWestX) / 2;
+  const stepRise = midY / st.stepsPerFlight;
+  return {
+    ...st,
+    midY,
+    stepRise,
+    slope: stepRise / st.stepRun,
+    drumX: (innerWestX + innerEastX) / 2,
+    drumZ,
+    drumInnerR,
+    drumR: drumInnerR + st.wallThickness,
+    innerWestX,
+    innerEastX,
+    westFaceX: innerWestX - st.wallThickness,
+    eastFaceX: innerEastX + st.wallThickness,
+    // Facing edges of the two flights (the gap between them holds the centre wall)
+    gapWestX: st.upperFlightX + half,
+    gapEastX: st.lowerFlightX - half
+  };
+}

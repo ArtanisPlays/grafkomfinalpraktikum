@@ -1,5 +1,7 @@
 import * as THREE from "three";
-import { applyMetricUV, metricIfFlagged } from "./geomUtils.js";
+import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { applyMetricUV, metricIfFlagged, rod } from "./geomUtils.js";
+import { getStairMetrics } from "./layoutSpec.js";
 
 /**
  * Building & Architectural Structure Builder
@@ -443,10 +445,10 @@ function buildMezzanineAndNorthWall(layoutSpec, materials) {
   const czA = (mh.minZ + mh.mezzanineEdgeZ) * 0.5;
   group.add(createBox(wA, slabT, dA, materials.whitePlaster, cxA, slabCy, czA));
 
-  // Wing B Mezzanine landing bridge north of the staircase (x: 11.5..15.5, z: -6.5..-3.6)
-  // Leaving z: -3.6..2.0 open as the stairwell void so stairs ascend cleanly without clipping!
+  // Wing B mezzanine bridge (x: 11.5..15.5), flush with the Wing A mezzanine edge.
+  // The staircase stands south of this edge and reaches it over its own landing tongue.
   const wBridge = bridge.maxX - bridge.minX;
-  const dBridge = -3.6 - bridge.minZ;
+  const dBridge = mh.mezzanineEdgeZ - bridge.minZ;
   group.add(
     createBox(
       wBridge,
@@ -455,7 +457,7 @@ function buildMezzanineAndNorthWall(layoutSpec, materials) {
       materials.whitePlaster,
       (bridge.minX + bridge.maxX) * 0.5,
       slabCy,
-      (bridge.minZ + -3.6) * 0.5
+      (bridge.minZ + mh.mezzanineEdgeZ) * 0.5
     )
   );
 
@@ -493,7 +495,9 @@ function buildMezzanineAndNorthWall(layoutSpec, materials) {
 
   // Wing A straight parapet segments
   addParapetSegment(-13.9, mh.mezzanineEdgeZ, 1.5, mh.mezzanineEdgeZ);
-  addParapetSegment(6.5, mh.mezzanineEdgeZ, 11.5, mh.mezzanineEdgeZ);
+  // East segment runs on along the Wing B bridge and stops inside the stair's west wall
+  const sm = getStairMetrics(layoutSpec);
+  addParapetSegment(6.5, mh.mezzanineEdgeZ, (sm.westFaceX + sm.innerWestX) * 0.5, mh.mezzanineEdgeZ);
 
   // Iconic protruding triangular/trapezoidal balcony bay above office (x: 1.5..6.5, apex at x: 4.0, z: -0.55)
   const bayApexX = 4.0;
@@ -515,11 +519,9 @@ function buildMezzanineAndNorthWall(layoutSpec, materials) {
   setShadows(bayFloor, true, true);
   group.add(bayFloor);
 
-  // Wing B stairwell guard parapets at y=3.35
-  addParapetSegment(11.5, mh.mezzanineEdgeZ, 11.5, -3.6);
-  addParapetSegment(11.5, -3.6, 11.86, -3.6);
-  addParapetSegment(13.04, -3.6, 15.5, -3.6);
-  addParapetSegment(15.5, -3.6, 15.5, -6.5);
+  // Wing B bridge guard: resumes east of the stair arrival, then returns along the east edge
+  addParapetSegment((sm.gapWestX + sm.gapEastX) * 0.5, mh.mezzanineEdgeZ, bridge.maxX, mh.mezzanineEdgeZ);
+  addParapetSegment(bridge.maxX, mh.mezzanineEdgeZ, bridge.maxX, bridge.minZ);
 
   // 4. Suspended weathered/rusted overhead cable tray beneath mezzanine soffit
   const trayY = 2.96;
@@ -617,172 +619,194 @@ function buildOfficeRoom(layoutSpec, materials) {
 }
 
 /**
- * Builds the iconic curved switchback white concrete staircase + curved drum landing,
- * under-stair enclosed storage closet, dark-blue handrails, and tiled treads.
+ * Extrudes a side profile given as [z, y] points along X (from x0 to x1).
+ * One watertight solid per element keeps the stair free of overlapping boxes.
+ */
+function extrudeSideProfile(points, x0, x1, material) {
+  const shape = new THREE.Shape();
+  points.forEach(([z, y], i) => (i === 0 ? shape.moveTo(-z, y) : shape.lineTo(-z, y)));
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: x1 - x0, bevelEnabled: false });
+  geo.rotateY(Math.PI * 0.5); // shape x -> world -z, extrusion depth -> world +x
+  geo.translate(x0, 0, 0);
+  metricIfFlagged(geo, material);
+  return setShadows(new THREE.Mesh(geo, material), true, true);
+}
+
+/**
+ * Extrudes a plan shape (drawn in x / -z) vertically from y0 by `height`.
+ */
+function extrudePlan(shape, y0, height, material, curveSegments = 40) {
+  let geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, curveSegments });
+  geo.rotateX(-Math.PI * 0.5); // shape y -> world -z, extrusion depth -> world +y
+  geo.translate(0, y0, 0);
+  geo = toCreasedNormals(geo, Math.PI / 5); // smooth the curved face, keep the edges crisp
+  metricIfFlagged(geo, material);
+  return setShadows(new THREE.Mesh(geo, material), true, true);
+}
+
+/**
+ * Builds the white concrete switchback staircase: two straight flights joined by a
+ * half-round landing drum, solid balustrade walls with dark-blue handrails, an open
+ * steel railing on the outer side of the lower flight, tiled treads, and the
+ * under-stair store with its door facing the hall.
  */
 function buildStaircase(layoutSpec, materials) {
   const group = new THREE.Group();
   group.name = "CurvedStaircase";
 
-  const st = layoutSpec.staircase;
-  const drumX = 12.75; // spans x: 11.07..14.43, keeping perhatianSigns[0] at (11.2, 1.9, 2.25) flush outside
-  const drumZ = st.curvedDrumCenter.z; // 1.5
-  const drumR = 1.68;
-  const midY = st.totalRise * 0.5; // 1.675
-  const totalY = st.totalRise; // 3.35
+  const sm = getStairMetrics(layoutSpec);
+  const mh = layoutSpec.wings.mainHall;
+  const { midY, totalRise: totalY, stepRise, stepRun, stepsPerFlight: steps, slope } = sm;
+  const { northZ, drumX, drumZ, drumR, drumInnerR, parapetHeight: parapetH } = sm;
+  const edgeZ = mh.mezzanineEdgeZ; // the upper flight reaches the mezzanine over a short tongue
+  const slabT = mh.mezzanineSlabThickness;
+  const plaster = materials.whitePlaster;
+  const railRise = 0.16; // handrail centre above the top of a balustrade wall
+  const railR = 0.03;
 
-  // Flights positioned east of x=11.75 so upper balustrade clears column (11.5, -1.8, r=0.25)
-  const flightW = 1.1;
-  const upperCx = 12.48; // spans x: 11.93..13.03 (west balustrade face x=11.78 > 11.75)
-  const lowerCx = 13.78; // spans x: 13.23..14.33
-  const zBottom = -3.6;
-  const zDrumJoin = drumZ; // 1.5
-  const flightLen = zDrumJoin - zBottom; // 5.1m
-  const stepsPerFlight = 10;
-  const stepRun = flightLen / stepsPerFlight;
-  const stepRise = midY / stepsPerFlight;
+  /* ---------- 1. Half-round landing drum ---------- */
+  const halfDisc = (r) => {
+    const shape = new THREE.Shape();
+    shape.moveTo(drumX - r, -drumZ);
+    shape.absarc(drumX, -drumZ, r, Math.PI, Math.PI * 2, false);
+    shape.closePath();
+    return shape;
+  };
+  group.add(extrudePlan(halfDisc(drumR), 0, midY, plaster));
 
-  // 1. Curved semicircular white concrete drum + mid-landing platform
-  const drumBody = new THREE.Mesh(
-    new THREE.CylinderGeometry(drumR, drumR, midY, 32, 1, false, -Math.PI * 0.5, Math.PI),
-    materials.whitePlaster
-  );
-  drumBody.position.set(drumX, midY * 0.5, drumZ);
-  setShadows(drumBody, true, true);
-  group.add(drumBody);
+  const landing = extrudePlan(halfDisc(drumInnerR - 0.004), midY, 0.02, materials.stairTile);
+  landing.castShadow = false;
+  group.add(landing);
 
-  // Tiled mid-landing floor disk on top of drum
-  const landingDisk = new THREE.Mesh(
-    new THREE.CylinderGeometry(drumR - 0.14, drumR - 0.14, 0.04, 32, 1, false, -Math.PI * 0.5, Math.PI),
-    materials.stairTile
-  );
-  landingDisk.position.set(drumX, midY + 0.01, drumZ);
-  setShadows(landingDisk, false, true);
-  group.add(landingDisk);
+  const ring = new THREE.Shape();
+  ring.moveTo(drumX - drumR, -drumZ);
+  ring.absarc(drumX, -drumZ, drumR, Math.PI, Math.PI * 2, false);
+  ring.lineTo(drumX + drumInnerR, -drumZ);
+  ring.absarc(drumX, -drumZ, drumInnerR, Math.PI * 2, Math.PI, true);
+  ring.closePath();
+  group.add(extrudePlan(ring, midY, parapetH, plaster));
 
-  // Curved concrete parapet wall around drum landing (y: midY .. midY + 0.92)
-  const parapetH = 0.92;
-  const outerParapet = new THREE.Mesh(
-    new THREE.CylinderGeometry(drumR, drumR, parapetH, 32, 1, true, -Math.PI * 0.5, Math.PI),
-    materials.whitePlaster
-  );
-  outerParapet.position.set(drumX, midY + parapetH * 0.5, drumZ);
-  setShadows(outerParapet, true, true);
-  group.add(outerParapet);
-
-  const innerParapet = new THREE.Mesh(
-    new THREE.CylinderGeometry(drumR - 0.15, drumR - 0.15, parapetH, 32, 1, true, -Math.PI * 0.5, Math.PI),
-    materials.whitePlaster
-  );
-  innerParapet.position.set(drumX, midY + parapetH * 0.5, drumZ);
-  setShadows(innerParapet, true, true);
-  group.add(innerParapet);
-
-  // Top cap of curved parapet (theta PI..2*PI in XY maps to +Z south after rotateX(-PI/2))
-  const capRing = new THREE.Mesh(
-    new THREE.RingGeometry(drumR - 0.15, drumR, 32, 1, Math.PI, Math.PI),
-    materials.whitePlaster
-  );
-  capRing.rotation.x = -Math.PI * 0.5;
-  capRing.position.set(drumX, midY + parapetH, drumZ);
-  group.add(capRing);
-
-  // Dark-blue curved tubular handrail above drum parapet
-  const curvedRail = new THREE.Mesh(
-    new THREE.TorusGeometry(drumR - 0.075, 0.032, 10, 32, Math.PI),
-    materials.blueHandrail
-  );
+  const railRadius = (drumR + drumInnerR) * 0.5;
+  const drumRailY = midY + parapetH + railRise;
+  const curvedRail = new THREE.Mesh(new THREE.TorusGeometry(railRadius, railR, 10, 40, Math.PI), materials.blueHandrail);
   curvedRail.rotation.x = Math.PI * 0.5;
-  curvedRail.position.set(drumX, midY + parapetH + 0.16, drumZ);
+  curvedRail.position.set(drumX, drumRailY, drumZ);
   setShadows(curvedRail, true, false);
   group.add(curvedRail);
-
-  for (let a = 0; a <= 4; a++) {
-    const theta = (a / 4) * Math.PI;
-    const px = drumX + Math.cos(theta) * (drumR - 0.075);
-    const pz = drumZ + Math.sin(theta) * (drumR - 0.075);
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.18, 8), materials.blueHandrail);
-    post.position.set(px, midY + parapetH + 0.08, pz);
-    group.add(post);
+  for (let a = 1; a <= 5; a++) {
+    const theta = (a / 6) * Math.PI;
+    const px = drumX + Math.cos(theta) * railRadius;
+    const pz = drumZ + Math.sin(theta) * railRadius;
+    group.add(rod([px, midY + parapetH - 0.01, pz], [px, drumRailY, pz], 0.018, materials.blueHandrail, { radial: 8 }));
   }
 
-  // Short north shoulder return closing west rim of curved drum (x: 11.07..11.86 at z=1.5)
-  const shoulderLen = 11.86 - (drumX - drumR);
-  const shoulderCx = (drumX - drumR + 11.86) * 0.5;
-  group.add(createBox(shoulderLen, parapetH, 0.15, materials.whitePlaster, shoulderCx, midY + parapetH * 0.5, drumZ));
-  const shoulderRail = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, shoulderLen + 0.04, 10), materials.blueHandrail);
-  shoulderRail.rotation.z = Math.PI * 0.5;
-  shoulderRail.position.set(shoulderCx, midY + parapetH + 0.16, drumZ);
-  setShadows(shoulderRail, true, false);
-  group.add(shoulderRail);
-
-  // 2. Enclosed under-stair storage closet under the flights & drum
-  const closetZMin = -1.6;
-  const closetW = flightW * 2 + 0.2;
-  group.add(createBox(closetW, midY, zDrumJoin - closetZMin, materials.whitePlaster, (lowerCx + upperCx) * 0.5, midY * 0.5, (closetZMin + zDrumJoin) * 0.5));
-  // Closet white door + dark horizontal louver vent on west side facing hall
-  group.add(createBox(0.06, 1.5, 0.78, materials.cabinetWhite, upperCx - flightW * 0.5 - 0.04, 0.76, 0.65));
-  group.add(createBox(0.07, 0.18, 0.48, materials.blackMullion, upperCx - flightW * 0.5 - 0.05, 1.25, 0.05));
-
-  // 3. Lower Flight (x = lowerCx, climbs +Z from z=-3.6, y=0 up to z=1.5, y=1.675)
-  for (let i = 0; i < stepsPerFlight; i++) {
-    const yTop = (i + 1) * stepRise;
-    const zCenter = zBottom + (i + 0.5) * stepRun;
-    group.add(createBox(flightW, yTop, stepRun + 0.01, materials.whitePlaster, lowerCx, yTop * 0.5, zCenter));
-    group.add(createBox(flightW - 0.02, 0.025, stepRun, materials.stairTile, lowerCx, yTop + 0.012, zCenter, { castShadow: false }));
-    group.add(createBox(flightW - 0.02, 0.018, 0.03, materials.blackMullion, lowerCx, yTop + 0.018, zCenter - stepRun * 0.46));
+  /* ---------- 2. Flights (one stepped solid each) ---------- */
+  // Lower flight: climbs south (+Z) from the floor at northZ up to the landing
+  const lowerProfile = [[northZ, 0]];
+  for (let i = 0; i < steps; i++) {
+    const z0 = northZ + i * stepRun;
+    const y = (i + 1) * stepRise;
+    lowerProfile.push([z0, y], [z0 + stepRun, y]);
   }
+  lowerProfile.push([drumZ, 0]);
+  group.add(extrudeSideProfile(lowerProfile, sm.gapEastX, sm.innerEastX, plaster));
 
-  // 4. Upper Flight (x = upperCx, climbs -Z from z=1.5, y=1.675 up to z=-3.6, y=3.35)
-  // Angled concrete soffit beam under upper flight + individual steps
-  group.add(createSlopedSlabZ(upperCx - flightW * 0.5, upperCx + flightW * 0.5, zDrumJoin, midY - 0.14, zBottom, totalY - 0.14, 0.26, materials.whitePlaster));
-
-  for (let i = 0; i < stepsPerFlight; i++) {
-    const yTop = midY + (i + 1) * stepRise;
-    const zCenter = zDrumJoin - (i + 0.5) * stepRun;
-    group.add(createBox(flightW, stepRise + 0.12, stepRun + 0.02, materials.whitePlaster, upperCx, yTop - (stepRise + 0.12) * 0.5, zCenter));
-    group.add(createBox(flightW - 0.02, 0.025, stepRun, materials.stairTile, upperCx, yTop + 0.012, zCenter, { castShadow: false }));
-    group.add(createBox(flightW - 0.02, 0.018, 0.03, materials.blackMullion, upperCx, yTop + 0.018, zCenter + stepRun * 0.46));
+  // Upper flight: climbs north (-Z) from the landing to the mezzanine, then bridges the
+  // last stretch to the mezzanine edge as a level tongue. Solid below = the under-stair store.
+  const upperProfile = [
+    [drumZ, 0],
+    [drumZ, midY]
+  ];
+  for (let i = 0; i < steps; i++) {
+    const z0 = drumZ - i * stepRun;
+    const y = midY + (i + 1) * stepRise;
+    upperProfile.push([z0, y], [z0 - stepRun, y]);
   }
+  upperProfile.push([edgeZ, totalY], [edgeZ, totalY - slabT], [northZ, totalY - slabT], [northZ, 0]);
+  group.add(extrudeSideProfile(upperProfile, sm.innerWestX, sm.gapWestX, plaster));
 
-  // 5. Sloped concrete stringer/parapet walls + dark-blue handrails along flights
-  // Normalize endpoints so zA < zB before atan2, preventing upside-down flip when climbing -Z.
-  const addSlopedBalustrade = (bx, z1, y1, z2, y2, wallDepthBelow = 0) => {
-    const zA = z1 <= z2 ? z1 : z2;
-    const yA = z1 <= z2 ? y1 : y2;
-    const zB = z1 <= z2 ? z2 : z1;
-    const yB = z1 <= z2 ? y2 : y1;
+  // Tiled treads with dark anti-slip nosings
+  const treadW = sm.flightWidth - 0.02;
+  const addTread = (cx, zFront, dir, yTop) => {
+    // dir = +1 when the flight climbs towards +Z, -1 towards -Z
+    group.add(createBox(treadW, 0.02, stepRun - 0.004, materials.stairTile, cx, yTop + 0.01, zFront + dir * stepRun * 0.5, { castShadow: false }));
+    group.add(createBox(treadW, 0.024, 0.034, materials.blackMullion, cx, yTop + 0.011, zFront + dir * 0.012, { castShadow: false }));
+  };
+  for (let i = 0; i < steps; i++) {
+    addTread(sm.lowerFlightX, northZ + i * stepRun, 1, (i + 1) * stepRise);
+    addTread(sm.upperFlightX, drumZ - i * stepRun, -1, midY + (i + 1) * stepRise);
+  }
+  // Tongue finish between the top step and the mezzanine deck
+  group.add(
+    createBox(treadW, 0.02, northZ - edgeZ, materials.stairTile, sm.upperFlightX, totalY + 0.01, (northZ + edgeZ) * 0.5, { castShadow: false })
+  );
 
-    const dz = zB - zA;
-    const dy = yB - yA;
-    const len = Math.hypot(dz, dy);
-    const angle = Math.atan2(dy, dz);
-    const bGroup = new THREE.Group();
-    bGroup.position.set(bx, (yA + yB) * 0.5, (zA + zB) * 0.5);
-    bGroup.rotation.x = -angle;
-
-    const totalWallH = 0.92 + wallDepthBelow;
-    bGroup.add(createBox(0.15, totalWallH, len, materials.whitePlaster, 0, 0.46 - wallDepthBelow * 0.5, 0));
-
-    const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, len + 0.06, 10), materials.blueHandrail);
-    rail.rotation.x = Math.PI * 0.5;
-    rail.position.set(0, 1.08, 0);
-    setShadows(rail, true, false);
-    bGroup.add(rail);
-
-    for (let k = -2; k <= 2; k++) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.18, 8), materials.blueHandrail);
-      post.position.set(0, 0.99, (k / 2.2) * (len * 0.48));
-      bGroup.add(post);
+  /* ---------- 3. Balustrade walls + handrails ---------- */
+  // Solid wall beside the upper flight: follows the flight, then runs level along the tongue
+  const upperWall = [
+    [drumZ, 0],
+    [drumZ, midY + parapetH],
+    [northZ, totalY + parapetH],
+    [edgeZ, totalY + parapetH],
+    [edgeZ, totalY - slabT - 0.05],
+    [northZ, totalY - slabT - 0.05],
+    [northZ, 0]
+  ];
+  const addWallRail = (x) => {
+    const y0 = midY + parapetH + railRise;
+    const y1 = totalY + parapetH + railRise;
+    group.add(rod([x, y0, drumZ], [x, y1, northZ], railR, materials.blueHandrail, { radial: 10, cast: true }));
+    group.add(rod([x, y1, northZ + 0.01], [x, y1, edgeZ], railR, materials.blueHandrail, { radial: 10, cast: true }));
+    for (let k = 0; k <= 4; k++) {
+      const t = 0.06 + (k / 4) * 0.88;
+      const z = drumZ + (northZ - drumZ) * t;
+      const yTop = y0 + (y1 - y0) * t;
+      group.add(rod([x, yTop - railRise - 0.01, z], [x, yTop, z], 0.018, materials.blueHandrail, { radial: 8 }));
     }
-
-    group.add(bGroup);
+    group.add(rod([x, y1 - railRise - 0.01, edgeZ + 0.12], [x, y1, edgeZ + 0.12], 0.018, materials.blueHandrail, { radial: 8 }));
   };
 
-  // Lower flight outer (east) balustrade + upper flight outer (west) & center divider balustrades
-  addSlopedBalustrade(lowerCx + flightW * 0.5 + 0.075, zBottom, 0, zDrumJoin, midY, 0.2);
-  addSlopedBalustrade(upperCx - flightW * 0.5 - 0.075, zDrumJoin, midY, zBottom, totalY, 0.25);
-  addSlopedBalustrade((lowerCx + upperCx) * 0.5, zDrumJoin, midY, zBottom, totalY, 0.35);
+  // West wall (faces the hall) and the centre wall between the two flights
+  group.add(extrudeSideProfile(upperWall, sm.westFaceX, sm.innerWestX, plaster));
+  addWallRail((sm.westFaceX + sm.innerWestX) * 0.5);
+  group.add(extrudeSideProfile(upperWall, sm.gapWestX, sm.gapEastX, plaster));
+  addWallRail((sm.gapWestX + sm.gapEastX) * 0.5);
+
+  // Lower flight, outer (east) side: low concrete stringer with an open steel railing
+  const curbH = 0.14;
+  group.add(
+    extrudeSideProfile(
+      [
+        [northZ, 0],
+        [northZ, curbH],
+        [drumZ, midY + curbH],
+        [drumZ, 0]
+      ],
+      sm.innerEastX,
+      sm.eastFaceX,
+      plaster
+    )
+  );
+  const eastRailX = (sm.innerEastX + sm.eastFaceX) * 0.5;
+  const eastTop = parapetH + railRise;
+  group.add(rod([eastRailX, eastTop, northZ], [eastRailX, midY + eastTop, drumZ], railR, materials.blueHandrail, { radial: 10, cast: true }));
+  group.add(rod([eastRailX, eastTop * 0.55, northZ], [eastRailX, midY + eastTop * 0.55, drumZ], 0.016, materials.blueHandrail, { radial: 8, cast: true }));
+  const balusters = 6;
+  for (let k = 0; k <= balusters; k++) {
+    const t = k / balusters;
+    const z = northZ + (drumZ - northZ) * (0.02 + t * 0.94);
+    const yLine = (z - northZ) * slope;
+    group.add(rod([eastRailX, yLine + curbH - 0.02, z], [eastRailX, yLine + eastTop, z], 0.02, materials.blueHandrail, { radial: 8, cast: true }));
+  }
+
+  /* ---------- 4. Under-stair store: door + louvre on the hall side ---------- */
+  const doorX = sm.westFaceX - 0.012;
+  const doorZ = drumZ - 0.62;
+  group.add(createBox(0.03, 1.66, 0.86, materials.blackMullion, doorX + 0.004, 0.83, doorZ));
+  group.add(createBox(0.03, 1.6, 0.78, materials.cabinetWhite, doorX - 0.008, 0.82, doorZ));
+  group.add(createBox(0.03, 0.12, 0.03, materials.stainlessSteel, doorX - 0.026, 0.86, doorZ - 0.3));
+  group.add(createBox(0.03, 0.2, 0.5, materials.blackMullion, doorX, 1.38, drumZ - 1.42));
 
   return group;
 }

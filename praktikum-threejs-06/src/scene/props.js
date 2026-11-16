@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { registerAnimator, markDynamic } from "./animation.js";
-import { metricIfFlagged } from "./geomUtils.js";
+import { metricIfFlagged, columnWrap } from "./geomUtils.js";
+import { getStairMetrics } from "./layoutSpec.js";
 
 /**
  * Helper to create a BoxGeometry mesh with shadow defaults.
@@ -879,33 +880,33 @@ export function createProps(layoutSpec, materials) {
     side: THREE.DoubleSide
   });
 
-  (props.perhatianSigns || []).forEach((s, idx) => {
-    const signGroup = new THREE.Group();
-    if (idx === 0) {
-      // Staircase wall has stacked upper + lower yellow PERHATIAN signs + fire alarm conduit
-      const upper = makeBox(1.15, 0.72, 0.02, upperPerhatianMat);
-      upper.position.y = 0.38;
-      signGroup.add(upper);
+  const alarmRed = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.4 });
+  (props.perhatianSigns || []).forEach((s) => {
+    if (s.onStairDrum) {
+      // Stacked upper + lower boards bent around the stair drum, facing the hall,
+      // with the fire alarm bell and call point beside them
+      const sm = getStairMetrics(layoutSpec);
+      const r = sm.drumR + 0.012;
+      const upper = columnWrap(r, 1.15, 0.72, upperPerhatianMat, sm.drumX, s.y + 0.38, sm.drumZ, s.facing);
+      const lower = columnWrap(r, 1.15, 0.72, lowerPerhatianMat, sm.drumX, s.y - 0.38, sm.drumZ, s.facing);
+      upper.castShadow = lower.castShadow = false;
+      group.add(upper, lower);
 
-      const lower = makeBox(1.15, 0.72, 0.02, lowerPerhatianMat);
-      lower.position.y = -0.38;
-      signGroup.add(lower);
-
-      // Red fire alarm strobe & call-point box beside sign
-      const alarmRed = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.4 });
+      const onDrum = (mesh, angle, y, proud) => {
+        mesh.position.set(sm.drumX + Math.sin(angle) * (sm.drumR + proud), y, sm.drumZ + Math.cos(angle) * (sm.drumR + proud));
+        mesh.rotation.y = angle;
+        group.add(mesh);
+      };
+      const side = s.facing + (1.15 / 2 + 0.2) / sm.drumR;
       const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 12), alarmRed);
-      bell.rotation.x = Math.PI / 2;
-      bell.position.set(0.75, 0.45, 0.03);
-      signGroup.add(bell);
-
-      const callPoint = makeBox(0.1, 0.1, 0.045, alarmRed);
-      callPoint.position.set(0.75, -0.25, 0.025);
-      signGroup.add(callPoint);
-    } else {
-      const board = makeBox(1.05, 0.68, 0.02, lowerPerhatianMat);
-      signGroup.add(board);
+      bell.geometry.rotateX(Math.PI / 2);
+      onDrum(bell, side, s.y + 0.45, 0.025);
+      onDrum(makeBox(0.1, 0.1, 0.045, alarmRed), side, s.y - 0.25, 0.02);
+      return;
     }
 
+    const signGroup = new THREE.Group();
+    signGroup.add(makeBox(1.05, 0.68, 0.02, lowerPerhatianMat));
     signGroup.position.set(s.x, s.y, s.z);
     signGroup.rotation.y = s.rotY || 0;
     group.add(signGroup);

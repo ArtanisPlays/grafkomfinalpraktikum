@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { box, cyl, rod, card, floorDecal, columnWrap, slopedBarZ, flatMat, decalMat } from "./geomUtils.js";
 import { createRng } from "./noise.js";
+import { getStairMetrics } from "./layoutSpec.js";
 import { registerAnimator, markDynamic } from "./animation.js";
 
 /**
@@ -883,39 +884,39 @@ function buildOfficeDetails(spec, materials, M) {
 function buildStairwellDetails(spec, materials, M) {
   const g = new THREE.Group();
   g.name = "StairwellDetails";
-  const drumX = 12.75;
-  const drumZ = spec.staircase.curvedDrumCenter.z;
-  const drumR = 1.68;
+  const sm = getStairMetrics(spec);
+  const { drumX, drumZ, drumR, northZ } = sm;
 
-  // Dark painted skirting around the drum and the closet
-  const skirt = new THREE.Mesh(new THREE.CylinderGeometry(drumR + 0.012, drumR + 0.012, 0.11, 32, 1, true, -Math.PI / 2, Math.PI), M.skirting);
+  // Dark painted skirting around the drum and along the store wall facing the hall
+  const skirt = new THREE.Mesh(new THREE.CylinderGeometry(drumR + 0.012, drumR + 0.012, 0.11, 40, 1, true, -Math.PI / 2, Math.PI), M.skirting);
   skirt.position.set(drumX, 0.055, drumZ);
   skirt.receiveShadow = true;
   g.add(skirt);
-  g.add(box(0.012, 0.11, 3.1, M.skirting, 11.922, 0.055, -0.05, { cast: false }));
+  g.add(box(0.012, 0.11, drumZ - 1.05 - northZ, M.skirting, sm.westFaceX - 0.006, 0.055, (northZ + drumZ - 1.05) / 2, { cast: false }));
 
   // Scuffed band where trolleys and feet rub the drum
-  const scuff = new THREE.Mesh(new THREE.CylinderGeometry(drumR + 0.008, drumR + 0.008, 0.5, 32, 1, true, -Math.PI / 2, Math.PI), M.dripWide);
+  const scuff = new THREE.Mesh(new THREE.CylinderGeometry(drumR + 0.008, drumR + 0.008, 0.5, 40, 1, true, -Math.PI / 2, Math.PI), M.dripWide);
   scuff.position.set(drumX, 1.42, drumZ);
   g.add(scuff);
 
-  // Conduit climbing the drum to the mezzanine
+  // Conduit climbing the drum to the alarm bell beside the PERHATIAN boards
   const th = -0.42;
   const cx = drumX + Math.sin(th) * (drumR + 0.014);
   const cz = drumZ + Math.cos(th) * (drumR + 0.014);
-  g.add(rod([cx, 0.12, cz], [cx, 2.58, cz], 0.012, M.pvc, { radial: 6 }));
+  g.add(rod([cx, 0.12, cz], [cx, 2.5, cz], 0.012, M.pvc, { radial: 6 }));
   g.add(box(0.07, 0.07, 0.04, M.pvc, cx, 1.35, cz + 0.01, { cast: false }));
 
-  // Cleaners' corner beside the closet door: broom, mop + bucket, dustpan, cardboard carton
-  const wx = 11.9;
-  g.add(rod([wx - 0.05, 1.32, -0.62], [wx - 0.3, 0.06, -0.7], 0.012, M.broomStick, { radial: 6, cast: true }));
-  const bristle = box(0.3, 0.1, 0.05, M.bristle, wx - 0.31, 0.06, -0.7);
+  // Cleaners' corner beside the store door: broom, mop + bucket, dustpan, cardboard cartons
+  const wx = sm.westFaceX;
+  const z0 = drumZ - 1.1; // just north of the door
+  g.add(rod([wx - 0.05, 1.32, z0 - 0.5], [wx - 0.3, 0.06, z0 - 0.58], 0.012, M.broomStick, { radial: 6, cast: true }));
+  const bristle = box(0.3, 0.1, 0.05, M.bristle, wx - 0.31, 0.06, z0 - 0.58);
   bristle.rotation.y = 1.45;
   g.add(bristle);
 
-  g.add(cyl(0.15, 0.12, 0.26, M.bucket, wx - 0.3, 0.13, -1.12, 16));
-  g.add(rod([wx - 0.3, 0.1, -1.12], [wx - 0.06, 1.38, -1.2], 0.012, M.frameAlu, { radial: 6, cast: true }));
-  g.add(cyl(0.07, 0.09, 0.1, M.mopHead, wx - 0.3, 0.09, -1.12, 10));
+  g.add(cyl(0.15, 0.12, 0.26, M.bucket, wx - 0.3, 0.13, z0 - 0.95, 16));
+  g.add(rod([wx - 0.3, 0.1, z0 - 0.95], [wx - 0.06, 1.38, z0 - 1.03], 0.012, M.frameAlu, { radial: 6, cast: true }));
+  g.add(cyl(0.07, 0.09, 0.1, M.mopHead, wx - 0.3, 0.09, z0 - 0.95, 10));
 
   const pan = new THREE.Group();
   pan.add(box(0.24, 0.012, 0.22, M.panRed, 0, 0.006, 0));
@@ -923,14 +924,14 @@ function buildStairwellDetails(spec, materials, M) {
   pan.add(box(0.012, 0.05, 0.22, M.panRed, -0.12, 0.025, 0));
   pan.add(box(0.012, 0.05, 0.22, M.panRed, 0.12, 0.025, 0));
   pan.add(rod([0, 0.06, -0.11], [0, 0.62, -0.2], 0.01, M.panRed, { radial: 6 }));
-  pan.position.set(wx - 0.22, 0, -0.32);
+  pan.position.set(wx - 0.22, 0, z0 - 0.2);
   pan.rotation.y = 1.9;
   g.add(pan);
 
-  const carton = box(0.42, 0.3, 0.32, M.cardboard, wx - 0.34, 0.15, -1.52);
+  const carton = box(0.42, 0.3, 0.32, M.cardboard, wx - 0.34, 0.15, z0 - 1.38);
   carton.rotation.y = 0.2;
   g.add(carton);
-  const carton2 = box(0.36, 0.24, 0.28, M.cardboard, wx - 0.32, 0.42, -1.5);
+  const carton2 = box(0.36, 0.24, 0.28, M.cardboard, wx - 0.32, 0.42, z0 - 1.36);
   carton2.rotation.y = -0.15;
   g.add(carton2);
 
@@ -1115,7 +1116,8 @@ function buildMezzanineDeck(spec, materials, M) {
   // Tiled finish on top of the bare slab
   const depth = mh.mezzanineEdgeZ - mh.minZ - 0.2;
   g.add(box(mh.maxX - mh.minX - 0.3, 0.012, depth, materials.floorTile, (mh.minX + mh.maxX) / 2, y + 0.006, mh.minZ + 0.1 + depth / 2, { cast: false }));
-  g.add(box(3.8, 0.012, 2.7, materials.floorTile, 13.5, y + 0.006, -5.05, { cast: false }));
+  const bridge = spec.wings.steelWing.mezzanineBridge;
+  g.add(box(bridge.maxX - bridge.minX - 0.25, 0.012, depth, materials.floorTile, (bridge.minX + bridge.maxX) / 2 - 0.02, y + 0.006, mh.minZ + 0.1 + depth / 2, { cast: false }));
 
   // Outside each first-floor door: mat, shoe rack with pairs of shoes, a potted plant
   const rng = createRng(5150);
