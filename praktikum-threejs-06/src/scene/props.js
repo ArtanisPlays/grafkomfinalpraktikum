@@ -906,7 +906,7 @@ export function createProps(layoutSpec, materials) {
     }
 
     const signGroup = new THREE.Group();
-    signGroup.add(makeBox(1.05, 0.68, 0.02, lowerPerhatianMat));
+    signGroup.add(makeBox(s.w ?? 1.05, s.h ?? 0.68, 0.02, lowerPerhatianMat));
     signGroup.position.set(s.x, s.y, s.z);
     signGroup.rotation.y = s.rotY || 0;
     group.add(signGroup);

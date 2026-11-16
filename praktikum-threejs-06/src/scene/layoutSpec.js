@@ -267,13 +267,13 @@ export const LAYOUT_SPEC = {
   // Props, Signs, Printing Station, Potted Plants & Cat (owned by props.js)
   props: {
     printingStation: { x: 2.75, z: -3.2, rotY: 0 },
-    wallDisplayCabinet: { x: 3.9, y: 2.45, z: -4.05, w: 3.0, h: 0.85, d: 0.28 },
+    wallDisplayCabinet: { x: 3.4, y: 2.75, z: -4.07, w: 2.7, h: 0.6, d: 0.24 },
     // Blue standing warning sign near stalls/red wall ("DILARANG MEMBAWA MAKANAN/MINUMAN...")
     blueRuleSign: { x: 2.95, z: 1.15, rotY: 0.08 },
     // Yellow PERHATIAN boards on curved staircase drum & beside printing station
     perhatianSigns: [
       { onStairDrum: true, facing: -1.0, y: 1.86, title: "PERHATIAN" },
-      { x: 3.55, y: 1.75, z: -4.15, rotY: 0, title: "PERHATIAN" }
+      { x: 3.5, y: 1.78, z: -4.185, rotY: 0, w: 0.62, h: 0.4, title: "PERHATIAN" }
     ],
     // Fire extinguishers flush on north service wall & west mezzanine-edge column
     fireExtinguishers: [
