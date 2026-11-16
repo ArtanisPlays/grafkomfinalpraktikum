@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { registerAnimator, markDynamic } from "./animation.js";
-import { metricIfFlagged, columnWrap } from "./geomUtils.js";
+import { metricIfFlagged } from "./geomUtils.js";
 import { getStairMetrics } from "./layoutSpec.js";
+import { autoFitText } from "./materials.js";
 
 /**
  * Helper to create a BoxGeometry mesh with shadow defaults.
@@ -22,7 +23,7 @@ function createPrintBoxScreenTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
 
   // Bright blue/white advertising screen
   ctx.fillStyle = "#e0f2fe";
@@ -89,7 +90,7 @@ function createPrintBoxPanelTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
 
   ctx.fillStyle = "#0ea5e9";
   ctx.fillRect(0, 0, w, h);
@@ -130,7 +131,7 @@ function createPrintBoxLowerTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
 
   ctx.fillStyle = "#e2e8f0";
   ctx.fillRect(0, 0, w, h);
@@ -271,7 +272,7 @@ function createPerhatianTexture(variant = "lower") {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
 
   ctx.fillStyle = "#dfb426";
   ctx.fillRect(0, 0, w, h);
@@ -324,7 +325,7 @@ function createPerhatianTexture(variant = "lower") {
     ctx.fillText("PERHATIAN", w / 2, 56);
 
     const rows = [
-      "Jam Kunjung Mulai Pukul 09.00 WIB - 22.00 WIB",
+      "Jam Kunjung Mulai Pukul 09.00 WIB s/d 22.00 WIB",
       "Buanglah Sampah pada Tempatnya",
       "Bebaskan Dirimu dari Asap Rokok"
     ];
@@ -882,26 +883,24 @@ export function createProps(layoutSpec, materials) {
 
   const alarmRed = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.4 });
   (props.perhatianSigns || []).forEach((s) => {
-    if (s.onStairDrum) {
-      // Stacked upper + lower boards bent around the stair drum, facing the hall,
+    if (s.onStairWall) {
+      // Stacked upper + lower boards centred on the stair's flat wall facing the hall,
       // with the fire alarm bell and call point beside them
       const sm = getStairMetrics(layoutSpec);
-      const r = sm.drumR + 0.012;
-      const upper = columnWrap(r, 1.15, 0.72, upperPerhatianMat, sm.drumX, s.y + 0.38, sm.drumZ, s.facing);
-      const lower = columnWrap(r, 1.15, 0.72, lowerPerhatianMat, sm.drumX, s.y - 0.38, sm.drumZ, s.facing);
-      upper.castShadow = lower.castShadow = false;
-      group.add(upper, lower);
-
-      const onDrum = (mesh, angle, y, proud) => {
-        mesh.position.set(sm.drumX + Math.sin(angle) * (sm.drumR + proud), y, sm.drumZ + Math.cos(angle) * (sm.drumR + proud));
-        mesh.rotation.y = angle;
-        group.add(mesh);
-      };
-      const side = s.facing + (1.15 / 2 + 0.2) / sm.drumR;
+      const wall = new THREE.Group();
+      const upper = makeBox(1.15, 0.72, 0.02, upperPerhatianMat);
+      upper.position.y = 0.38;
+      const lower = makeBox(1.15, 0.72, 0.02, lowerPerhatianMat);
+      lower.position.y = -0.38;
       const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 12), alarmRed);
-      bell.geometry.rotateX(Math.PI / 2);
-      onDrum(bell, side, s.y + 0.45, 0.025);
-      onDrum(makeBox(0.1, 0.1, 0.045, alarmRed), side, s.y - 0.25, 0.02);
+      bell.rotation.x = Math.PI / 2;
+      bell.position.set(-0.78, 0.45, 0.02);
+      const callPoint = makeBox(0.1, 0.1, 0.045, alarmRed);
+      callPoint.position.set(-0.78, -0.25, 0.015);
+      wall.add(upper, lower, bell, callPoint);
+      wall.position.set(sm.westFaceX - 0.012, s.y, (sm.northZ + sm.drumZ) / 2);
+      wall.rotation.y = -Math.PI / 2; // boards face west, towards the hall
+      group.add(wall);
       return;
     }
 

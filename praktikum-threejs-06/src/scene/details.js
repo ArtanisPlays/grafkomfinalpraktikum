@@ -753,8 +753,10 @@ function buildSignage(spec, materials, M, T) {
   const gz = off.maxZ + 0.045;
   g.add(box(bayW - 0.1, 0.5, 0.02, M.frameAlu, off.minX + bayW * 0.5, 2.68, gz));
   g.add(card(bayW - 0.14, 0.46, M.officeSign, off.minX + bayW * 0.5, 2.68, gz + 0.012));
-  g.add(card(0.24, 0.12, M.buka, off.minX + bayW * 0.5 + 0.2, 1.52, off.maxZ + 0.022));
-  g.add(rod([off.minX + bayW * 0.5 + 0.2, 1.58, off.maxZ + 0.02], [off.minX + bayW * 0.5 + 0.2, 1.72, off.maxZ + 0.02], 0.002, M.cableBlack, { radial: 4 }));
+  // OPEN tag hanging on the right-hand door leaf
+  const tagX = off.minX - 0.24;
+  g.add(card(0.24, 0.12, M.buka, tagX, 1.52, off.maxZ + 0.026));
+  g.add(rod([tagX, 1.58, off.maxZ + 0.024], [tagX, 1.72, off.maxZ + 0.024], 0.002, M.cableBlack, { radial: 4 }));
   const taped = [
     [1, -0.25, 1.62, 0],
     [1, 0.05, 1.6, 1],
@@ -786,7 +788,7 @@ function buildSignage(spec, materials, M, T) {
   banner.add(box(0.66, 0.05, 0.1, M.frameAlu, 0, 0.06, 0));
   banner.add(rod([0, 0.06, -0.05], [0, 1.72, -0.02], 0.008, M.frameAlu, { radial: 5 }));
   banner.add(box(0.62, 0.02, 0.02, M.frameAlu, 0, 1.73, -0.008, { cast: false }));
-  banner.position.set(8.55, 0, -1.78);
+  banner.position.set(8.55, 0, off.maxZ + 0.55);
   banner.rotation.y = -0.12;
   g.add(banner);
 
@@ -858,27 +860,26 @@ function buildOfficeDetails(spec, materials, M) {
   g.add(face);
   g.add(box(0.008, 0.1, 0.004, M.steelDark, 10.2, 2.39, wallZ + 0.04, { cast: false }));
   g.add(box(0.07, 0.008, 0.004, M.steelDark, 10.23, 2.35, wallZ + 0.04, { cast: false }));
-  g.add(box(0.6, 0.03, 0.6, materials.lampEmissive, 7.3, 3.105, -4.4, { cast: false, receive: false }));
-  g.add(box(0.6, 0.03, 0.6, materials.lampEmissive, 9.4, 3.105, -4.4, { cast: false, receive: false }));
+  g.add(box(0.6, 0.03, 0.6, materials.lampEmissive, 7.3, 3.105, desk.z, { cast: false, receive: false }));
+  g.add(box(0.6, 0.03, 0.6, materials.lampEmissive, 9.4, 3.105, desk.z, { cast: false, receive: false }));
 
   // Low cabinet with a printer and a water dispenser inside the east wall
-  g.add(box(0.5, 0.7, 1.0, materials.cabinetWhite, off.maxX - 0.38, 0.35, -3.0));
-  g.add(box(0.42, 0.2, 0.46, M.appliance, off.maxX - 0.38, 0.8, -3.1));
-  g.add(box(0.3, 0.012, 0.22, M.paper, off.maxX - 0.4, 0.906, -3.1, { cast: false }));
+  const sideZ = off.maxZ - 0.5;
+  g.add(box(0.5, 0.7, 0.8, materials.cabinetWhite, off.maxX - 0.38, 0.35, sideZ));
+  g.add(box(0.42, 0.2, 0.46, M.appliance, off.maxX - 0.38, 0.8, sideZ));
+  g.add(box(0.3, 0.012, 0.22, M.paper, off.maxX - 0.4, 0.906, sideZ, { cast: false }));
   g.add(box(0.3, 0.95, 0.3, M.appliance, off.minX + 0.35, 0.475, -5.9));
   g.add(cyl(0.135, 0.135, 0.34, M.gallon, off.minX + 0.35, 1.14, -5.9, 16));
   g.add(cyl(0.05, 0.135, 0.06, M.gallon, off.minX + 0.35, 0.98, -5.9, 16));
 
-  // Door mat on the hall side of the office doors
-  const bayW = (off.maxX - off.minX) / 5;
-  g.add(box(0.95, 0.012, 0.58, M.mat, off.minX + bayW * 0.5, 0.008, off.maxZ + 0.42, { cast: false }));
-  g.add(box(0.85, 0.013, 0.48, M.matInner, off.minX + bayW * 0.5, 0.009, off.maxZ + 0.42, { cast: false }));
-  g.add(box(0.75, 0.012, 0.5, M.mat, 4.34, 0.008, -4.25, { cast: false }));
+  // Door mat on the hall side of the office door
+  g.add(box(0.75, 0.012, 0.5, M.mat, (3.88 + off.minX) / 2, 0.008, off.maxZ + 0.4, { cast: false }));
+  g.add(box(0.65, 0.013, 0.4, M.matInner, (3.88 + off.minX) / 2, 0.009, off.maxZ + 0.4, { cast: false }));
   return g;
 }
 
 /* ------------------------------------------------------------------ */
-/* Stairwell: skirting, conduit and the cleaners' corner               */
+/* Stairwell: skirting, scuffs and the alarm conduit                    */
 /* ------------------------------------------------------------------ */
 
 function buildStairwellDetails(spec, materials, M) {
@@ -887,53 +888,22 @@ function buildStairwellDetails(spec, materials, M) {
   const sm = getStairMetrics(spec);
   const { drumX, drumZ, drumR, northZ } = sm;
 
-  // Dark painted skirting around the drum and along the store wall facing the hall
+  // Dark painted skirting around the drum and along the wall facing the hall
   const skirt = new THREE.Mesh(new THREE.CylinderGeometry(drumR + 0.012, drumR + 0.012, 0.11, 40, 1, true, -Math.PI / 2, Math.PI), M.skirting);
   skirt.position.set(drumX, 0.055, drumZ);
   skirt.receiveShadow = true;
   g.add(skirt);
-  g.add(box(0.012, 0.11, drumZ - 1.05 - northZ, M.skirting, sm.westFaceX - 0.006, 0.055, (northZ + drumZ - 1.05) / 2, { cast: false }));
+  g.add(box(0.012, 0.11, drumZ - northZ, M.skirting, sm.westFaceX - 0.006, 0.055, (northZ + drumZ) / 2, { cast: false }));
 
   // Scuffed band where trolleys and feet rub the drum
   const scuff = new THREE.Mesh(new THREE.CylinderGeometry(drumR + 0.008, drumR + 0.008, 0.5, 40, 1, true, -Math.PI / 2, Math.PI), M.dripWide);
   scuff.position.set(drumX, 1.42, drumZ);
   g.add(scuff);
 
-  // Conduit climbing the drum to the alarm bell beside the PERHATIAN boards
-  const th = -0.42;
-  const cx = drumX + Math.sin(th) * (drumR + 0.014);
-  const cz = drumZ + Math.cos(th) * (drumR + 0.014);
-  g.add(rod([cx, 0.12, cz], [cx, 2.5, cz], 0.012, M.pvc, { radial: 6 }));
-  g.add(box(0.07, 0.07, 0.04, M.pvc, cx, 1.35, cz + 0.01, { cast: false }));
-
-  // Cleaners' corner beside the store door: broom, mop + bucket, dustpan, cardboard cartons
-  const wx = sm.westFaceX;
-  const z0 = drumZ - 1.1; // just north of the door
-  g.add(rod([wx - 0.05, 1.32, z0 - 0.5], [wx - 0.3, 0.06, z0 - 0.58], 0.012, M.broomStick, { radial: 6, cast: true }));
-  const bristle = box(0.3, 0.1, 0.05, M.bristle, wx - 0.31, 0.06, z0 - 0.58);
-  bristle.rotation.y = 1.45;
-  g.add(bristle);
-
-  g.add(cyl(0.15, 0.12, 0.26, M.bucket, wx - 0.3, 0.13, z0 - 0.95, 16));
-  g.add(rod([wx - 0.3, 0.1, z0 - 0.95], [wx - 0.06, 1.38, z0 - 1.03], 0.012, M.frameAlu, { radial: 6, cast: true }));
-  g.add(cyl(0.07, 0.09, 0.1, M.mopHead, wx - 0.3, 0.09, z0 - 0.95, 10));
-
-  const pan = new THREE.Group();
-  pan.add(box(0.24, 0.012, 0.22, M.panRed, 0, 0.006, 0));
-  pan.add(box(0.24, 0.07, 0.012, M.panRed, 0, 0.035, -0.11));
-  pan.add(box(0.012, 0.05, 0.22, M.panRed, -0.12, 0.025, 0));
-  pan.add(box(0.012, 0.05, 0.22, M.panRed, 0.12, 0.025, 0));
-  pan.add(rod([0, 0.06, -0.11], [0, 0.62, -0.2], 0.01, M.panRed, { radial: 6 }));
-  pan.position.set(wx - 0.22, 0, z0 - 0.2);
-  pan.rotation.y = 1.9;
-  g.add(pan);
-
-  const carton = box(0.42, 0.3, 0.32, M.cardboard, wx - 0.34, 0.15, z0 - 1.38);
-  carton.rotation.y = 0.2;
-  g.add(carton);
-  const carton2 = box(0.36, 0.24, 0.28, M.cardboard, wx - 0.32, 0.42, z0 - 1.36);
-  carton2.rotation.y = -0.15;
-  g.add(carton2);
+  // Conduit climbing the wall to the alarm bell beside the PERHATIAN boards
+  const cz = (northZ + drumZ) / 2 - 0.78;
+  const cx = sm.westFaceX - 0.014;
+  g.add(rod([cx, 0.12, cz], [cx, 2.26, cz], 0.012, M.pvc, { radial: 6 }));
 
   return g;
 }

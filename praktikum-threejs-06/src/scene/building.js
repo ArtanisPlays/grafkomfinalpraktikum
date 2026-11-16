@@ -536,8 +536,8 @@ function buildMezzanineAndNorthWall(layoutSpec, materials) {
 }
 
 /**
- * Builds the glass-walled office ("Kantor Pelayanan Asrama") at x: 4.8..11.0, z: -6.5..-2.2,
- * plus the recessed alcove wall & glass entrance door around x: 2.0..4.8, z: -4.28..-4.6.
+ * Builds the office ("Kantor Pelayanan Asrama"): a white wall with the glass entrance door
+ * (x: 2.0..4.8) and the glass front (x: 4.8..11.0) on one straight line at z = officeRoom.maxZ.
  */
 function buildOfficeRoom(layoutSpec, materials) {
   const group = new THREE.Group();
@@ -546,19 +546,26 @@ function buildOfficeRoom(layoutSpec, materials) {
   const off = layoutSpec.officeRoom;
   const h = Math.min(off.height, layoutSpec.wings.mainHall.mezzanineFloorY - layoutSpec.wings.mainHall.mezzanineSlabThickness);
 
-  // Recessed alcove wall backing PERHATIAN sign & wallDisplayCabinet (z = -4.28)
-  group.add(createBox(1.9, h, 0.16, materials.whitePlaster, 2.92, h * 0.5, -4.28));
-  group.add(createBox(1.05, h - 2.35, 0.16, materials.whitePlaster, 4.32, 2.35 + (h - 2.35) * 0.5, -4.28));
+  // White front wall backing the printing station, with the office's glass double door.
+  // It stands on the same line as the glass front (z = off.maxZ).
+  const frontZ = off.maxZ;
+  const doorMinX = 3.88;
+  const doorMaxX = off.minX;
+  const doorCx = (doorMinX + doorMaxX) * 0.5;
+  const doorW = doorMaxX - doorMinX;
+  const wallW = doorMinX - off.lobbyMinX;
+  group.add(createBox(wallW, h, 0.16, materials.whitePlaster, off.lobbyMinX + wallW * 0.5, h * 0.5, frontZ));
+  group.add(createBox(doorW + 0.1, h - 2.35, 0.16, materials.whitePlaster, doorCx, 2.35 + (h - 2.35) * 0.5, frontZ));
 
-  // Recessed glass entrance wall with double glass doors at z = -4.6
-  group.add(createBox(0.08, 2.35, 0.08, materials.blackMullion, 3.88, 1.175, -4.6));
-  group.add(createBox(0.08, 2.35, 0.08, materials.blackMullion, 4.8, 1.175, -4.6));
-  group.add(createBox(0.96, 0.08, 0.08, materials.blackMullion, 4.34, 2.35, -4.6));
+  group.add(createBox(0.08, 2.35, 0.1, materials.blackMullion, doorMinX, 1.175, frontZ));
+  group.add(createBox(0.08, 2.35, 0.1, materials.blackMullion, doorMaxX, 1.175, frontZ));
+  group.add(createBox(doorW + 0.08, 0.08, 0.1, materials.blackMullion, doorCx, 2.35, frontZ));
   // Glass door leaves + stainless handles
-  group.add(createBox(0.42, 2.25, 0.04, materials.clearGlass, 4.12, 1.14, -4.6, { castShadow: false }));
-  group.add(createBox(0.42, 2.25, 0.04, materials.clearGlass, 4.56, 1.14, -4.6, { castShadow: false }));
-  group.add(createBox(0.03, 0.45, 0.06, materials.stainlessSteel, 4.28, 1.05, -4.55));
-  group.add(createBox(0.03, 0.45, 0.06, materials.stainlessSteel, 4.4, 1.05, -4.55));
+  const leafW = (doorW - 0.1) * 0.5;
+  for (const side of [-1, 1]) {
+    group.add(createBox(leafW, 2.25, 0.04, materials.clearGlass, doorCx + side * (leafW * 0.5 + 0.01), 1.14, frontZ, { castShadow: false }));
+    group.add(createBox(0.03, 0.45, 0.06, materials.stainlessSteel, doorCx + side * 0.06, 1.05, frontZ + 0.05));
+  }
 
   // Helper to build a black-mullioned glass curtain partition with frosted lower band
   const addGlassWall = (x1, z1, x2, z2, bays, doorBayIdx = -1) => {
@@ -601,15 +608,13 @@ function buildOfficeRoom(layoutSpec, materials) {
     group.add(wGroup);
   };
 
-  // Office South Wall (x: 4.8..11.0, z: -2.2) — 5 bays, bay 0 is double glass entrance
-  addGlassWall(off.minX, off.maxZ, off.maxX, off.maxZ, 5, 0);
+  // Office glass front (x: 4.8..11.0), in line with the door wall
+  addGlassWall(off.minX, off.maxZ, off.maxX, off.maxZ, 5, -1);
 
-  // Office West Glass Wall (x: 4.8, z: -4.6..-2.2) — 2 bays
-  addGlassWall(off.minX, -4.6, off.minX, off.maxZ, 2, -1);
-
-  // Office East Wall (x: 11.0, z: -6.5..-2.2): front glass + rear solid wall with brown double door
-  addGlassWall(off.maxX, -4.1, off.maxX, off.maxZ, 2, -1);
-  group.add(createBox(0.16, h, 2.4, materials.whitePlaster, off.maxX, h * 0.5, -5.3));
+  // Office east wall (x: 11.0): solid rear part with the brown double door, one glass bay in front
+  const solidEndZ = -4.1;
+  addGlassWall(off.maxX, solidEndZ, off.maxX, off.maxZ, 1, -1);
+  group.add(createBox(0.16, h, solidEndZ - off.minZ, materials.whitePlaster, off.maxX, h * 0.5, (solidEndZ + off.minZ) * 0.5));
   // Double brown wood doors on east wall facing Wing B atrium
   group.add(createBox(0.19, 2.25, 1.48, materials.blackMullion, off.maxX, 1.125, -5.3));
   group.add(createBox(0.21, 2.16, 0.68, materials.darkWood, off.maxX, 1.1, -5.66));
@@ -648,8 +653,8 @@ function extrudePlan(shape, y0, height, material, curveSegments = 40) {
 /**
  * Builds the white concrete switchback staircase: two straight flights joined by a
  * half-round landing drum, solid balustrade walls with dark-blue handrails, an open
- * steel railing on the outer side of the lower flight, tiled treads, and the
- * under-stair store with its door facing the hall.
+ * steel railing on the outer side of the lower flight and tiled treads. The side facing
+ * the hall is a plain white wall that carries the yellow PERHATIAN boards.
  */
 function buildStaircase(layoutSpec, materials) {
   const group = new THREE.Group();
@@ -713,7 +718,7 @@ function buildStaircase(layoutSpec, materials) {
   group.add(extrudeSideProfile(lowerProfile, sm.gapEastX, sm.innerEastX, plaster));
 
   // Upper flight: climbs north (-Z) from the landing to the mezzanine, then bridges the
-  // last stretch to the mezzanine edge as a level tongue. Solid below = the under-stair store.
+  // last stretch to the mezzanine edge as a level tongue. Closed in below, as on site.
   const upperProfile = [
     [drumZ, 0],
     [drumZ, midY]
@@ -799,14 +804,6 @@ function buildStaircase(layoutSpec, materials) {
     const yLine = (z - northZ) * slope;
     group.add(rod([eastRailX, yLine + curbH - 0.02, z], [eastRailX, yLine + eastTop, z], 0.02, materials.blueHandrail, { radial: 8, cast: true }));
   }
-
-  /* ---------- 4. Under-stair store: door + louvre on the hall side ---------- */
-  const doorX = sm.westFaceX - 0.012;
-  const doorZ = drumZ - 0.62;
-  group.add(createBox(0.03, 1.66, 0.86, materials.blackMullion, doorX + 0.004, 0.83, doorZ));
-  group.add(createBox(0.03, 1.6, 0.78, materials.cabinetWhite, doorX - 0.008, 0.82, doorZ));
-  group.add(createBox(0.03, 0.12, 0.03, materials.stainlessSteel, doorX - 0.026, 0.86, doorZ - 0.3));
-  group.add(createBox(0.03, 0.2, 0.5, materials.blackMullion, doorX, 1.38, drumZ - 1.42));
 
   return group;
 }

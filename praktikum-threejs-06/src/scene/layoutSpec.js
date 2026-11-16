@@ -166,7 +166,10 @@ export const LAYOUT_SPEC = {
     minX: 4.8,
     maxX: 11.0,
     minZ: -6.5,
-    maxZ: -2.2,
+    // One straight front: the white wall with the office door (x: 2.0..4.8) and the
+    // glass front (x: 4.8..11.0) share this line instead of the glass box jutting out
+    maxZ: -3.4,
+    lobbyMinX: 2.0,
     height: 3.25,
     doorX: 3.9,
     doorZ: -4.6,
@@ -261,19 +264,19 @@ export const LAYOUT_SPEC = {
 
     // Wing B west low parapet & white filing cabinet near staircase/office
     wingBWhiteCounter: { minX: 11.7, maxX: 13.6, z: -10.8, length: 2.6, width: 0.55, height: 0.85 },
-    officeInteriorTable: { x: 7.9, z: -4.4, w: 2.8, d: 1.2 }
+    officeInteriorTable: { x: 7.9, z: -4.9, w: 2.8, d: 1.0 }
   },
 
   // Props, Signs, Printing Station, Potted Plants & Cat (owned by props.js)
   props: {
-    printingStation: { x: 2.75, z: -3.2, rotY: 0 },
-    wallDisplayCabinet: { x: 3.4, y: 2.75, z: -4.07, w: 2.7, h: 0.6, d: 0.24 },
+    printingStation: { x: 2.75, z: -2.9, rotY: 0 },
+    wallDisplayCabinet: { x: 3.4, y: 2.75, z: -3.19, w: 2.7, h: 0.6, d: 0.24 },
     // Blue standing warning sign near stalls/red wall ("DILARANG MEMBAWA MAKANAN/MINUMAN...")
     blueRuleSign: { x: 2.95, z: 1.15, rotY: 0.08 },
-    // Yellow PERHATIAN boards on curved staircase drum & beside printing station
+    // Yellow PERHATIAN boards: centred on the stair wall facing the hall & beside the printing station
     perhatianSigns: [
-      { onStairDrum: true, facing: -1.0, y: 1.86, title: "PERHATIAN" },
-      { x: 3.5, y: 1.78, z: -4.185, rotY: 0, w: 0.62, h: 0.4, title: "PERHATIAN" }
+      { onStairWall: true, y: 1.86, title: "PERHATIAN" },
+      { x: 3.5, y: 1.78, z: -3.305, rotY: 0, w: 0.62, h: 0.4, title: "PERHATIAN" }
     ],
     // Fire extinguishers flush on north service wall & west mezzanine-edge column
     fireExtinguishers: [
@@ -287,9 +290,9 @@ export const LAYOUT_SPEC = {
     ],
     // Potted plants around office glass entrance & curved wall
     pottedPlants: [
-      { x: 3.1, z: -3.9, size: "medium" },
-      { x: 4.8, z: -3.9, size: "medium" },
-      { x: 10.15, z: -1.92, size: "tall" },
+      { x: 3.72, z: -3.08, size: "medium" },
+      { x: 5.0, z: -3.08, size: "medium" },
+      { x: 10.45, z: -3.05, size: "tall" },
       { x: 12.25, z: 2.55, size: "tall" }
     ],
     // Tabletop laptops, bottles, water gallons
