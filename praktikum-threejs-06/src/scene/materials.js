@@ -636,6 +636,31 @@ export function createGrassTexture() {
 /* Signage helper (unchanged API, used by props.js & stalls.js)        */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Makes ctx.fillText shrink the font whenever a line would run past the edge of the canvas
+ * (minus a margin), so no sign, banner or poster ends up with its lettering cut off.
+ */
+export function autoFitText(ctx, canvasWidth, margin = Math.max(10, canvasWidth * 0.05)) {
+  const draw = ctx.fillText.bind(ctx);
+  ctx.fillText = (text, x, y) => {
+    const align = ctx.textAlign;
+    let avail;
+    if (align === "center") avail = 2 * Math.min(x, canvasWidth - x) - 2 * margin;
+    else if (align === "right" || align === "end") avail = x - margin;
+    else avail = canvasWidth - x - margin;
+    const width = ctx.measureText(text).width;
+    if (avail > 8 && width > avail) {
+      const font = ctx.font;
+      ctx.font = font.replace(/(\d+(?:\.\d+)?)px/, (_, px) => `${((px * avail) / width).toFixed(1)}px`);
+      draw(text, x, y);
+      ctx.font = font;
+    } else {
+      draw(text, x, y);
+    }
+  };
+  return ctx;
+}
+
 export function createSignTexture({
   width = 512,
   height = 256,
@@ -648,7 +673,7 @@ export function createSignTexture({
   lines = []
 } = {}) {
   const canvas = makeCanvas(width, height);
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), width, Math.max(14, width * 0.09));
 
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, width, height);
@@ -713,7 +738,7 @@ function blockLightFromBehind(material) {
 
 export function createCanvasTexture(width, height, draw, { transparent = false } = {}) {
   const canvas = makeCanvas(width, height);
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), width);
   if (!transparent) {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, width, height);

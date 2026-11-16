@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { autoFitText } from "./materials.js";
 import { metricIfFlagged } from "./geomUtils.js";
 import { applyWind, foliageBlob } from "./wind.js";
 
@@ -45,7 +46,7 @@ function createHexPaverTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
   const rng = createRng(4021);
 
   ctx.fillStyle = "#484d54";
@@ -95,7 +96,7 @@ function createRiverStoneTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
   const rng = createRng(8842);
 
   // Weathered cream/grey mortar bed
@@ -157,7 +158,7 @@ function createBinDecalTexture({ bg = "#2d7a47", border = "#e8f5e9", title = "OR
   const canvas = document.createElement("canvas");
   canvas.width = 192;
   canvas.height = 256;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
 
   if (style === "krisbow") {
     ctx.fillStyle = "rgba(0,0,0,0)";

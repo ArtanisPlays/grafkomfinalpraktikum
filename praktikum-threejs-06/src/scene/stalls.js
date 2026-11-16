@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { autoFitText } from "./materials.js";
 import { metricIfFlagged } from "./geomUtils.js";
 
 /**
@@ -10,7 +11,7 @@ function createMosaicTileTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
 
   ctx.fillStyle = "#cfc6bc";
   ctx.fillRect(0, 0, size, size);
@@ -54,7 +55,7 @@ function createExSoeBannerTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
 
   // Warm orange-peach gradient background
   const grad = ctx.createLinearGradient(0, 0, w, 0);
@@ -168,7 +169,7 @@ function createWarasBannerTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
 
   // Dark charcoal base + golden wave on right/bottom
   ctx.fillStyle = "#1c1f24";
@@ -263,7 +264,7 @@ function createKedaiMinumanBannerTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d");
+  const ctx = autoFitText(canvas.getContext("2d"), canvas.width);
 
   // Lush lime-green gradient
   const grad = ctx.createLinearGradient(0, 0, w, h);
@@ -360,10 +361,10 @@ function createKedaiMinumanBannerTexture() {
 
   ctx.textAlign = "left";
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 16px Arial, sans-serif";
+  ctx.font = "bold 15px Arial, sans-serif";
   ["Milo", "Hilo", "Indomilk", "Nutrisari", "Pop Ice", "Es Jeruk", "Es Teh  5k"].forEach(
     (d, idx) => {
-      ctx.fillText(d, 785, 92 + idx * 20);
+      ctx.fillText(d, 785, 86 + idx * 18);
     }
   );
 
