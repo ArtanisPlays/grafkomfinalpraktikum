@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { metricIfFlagged } from "./geomUtils.js";
+import { applyWind, foliageBlob } from "./wind.js";
 
 /**
  * Deterministic PRNG (Mulberry32) so procedural textures and foliage stay reproducible.
@@ -748,8 +749,7 @@ function createCanopyTree(scale, seed, materials, outdoorMats) {
 
   // 3 spreading branches
   const branchCount = 3;
-  const crownGeo = new THREE.IcosahedronGeometry(1, 1);
-  const foliageMats = [materials.foliageDark, materials.foliageBright, outdoorMats.foliageMid];
+  const foliageMats = [outdoorMats.canopyDark, outdoorMats.canopyBright, outdoorMats.canopyMid];
 
   for (let i = 0; i < branchCount; i++) {
     const angle = (i / branchCount) * Math.PI * 2 + rng() * 0.6;
@@ -772,14 +772,14 @@ function createCanopyTree(scale, seed, materials, outdoorMats) {
     // Foliage puffs at branch tip
     const tipX = Math.sin(tilt) * bLen * 0.9;
     const tipY = Math.cos(tilt) * bLen * 0.9;
-    for (let c = 0; c < 3; c++) {
-      const r = (0.85 + rng() * 0.55) * scale;
-      const puff = new THREE.Mesh(crownGeo, foliageMats[(i + c) % foliageMats.length]);
+    for (let c = 0; c < 5; c++) {
+      const r = (c < 3 ? 0.85 + rng() * 0.55 : 0.5 + rng() * 0.3) * scale;
+      const puff = new THREE.Mesh(foliageBlob(i * 3 + c), foliageMats[(i + c) % foliageMats.length]);
       puff.scale.set(r * (1.0 + rng() * 0.25), r * (0.78 + rng() * 0.18), r * (1.0 + rng() * 0.25));
       puff.position.set(
-        tipX + (rng() - 0.5) * 0.9 * scale,
-        tipY + (rng() - 0.3) * 0.65 * scale,
-        (rng() - 0.5) * 0.9 * scale
+        tipX + (rng() - 0.5) * (c < 3 ? 0.9 : 1.9) * scale,
+        tipY + (rng() - 0.3) * (c < 3 ? 0.65 : 1.0) * scale,
+        (rng() - 0.5) * (c < 3 ? 0.9 : 1.9) * scale
       );
       puff.rotation.set(rng() * 0.4, rng() * Math.PI, rng() * 0.4);
       puff.castShadow = true;
@@ -791,7 +791,7 @@ function createCanopyTree(scale, seed, materials, outdoorMats) {
   }
 
   // Central crown cap
-  const topCrown = new THREE.Mesh(crownGeo, materials.foliageBright);
+  const topCrown = new THREE.Mesh(foliageBlob(1), outdoorMats.canopyBright);
   topCrown.scale.set(1.35 * scale, 1.05 * scale, 1.3 * scale);
   topCrown.position.y = trunkH + 1.05 * scale;
   topCrown.castShadow = true;
@@ -881,18 +881,18 @@ function createPucukMerahTree(scale, seed, materials, outdoorMats) {
     shrubTree.add(trunk);
   }
 
-  const lobeGeo = new THREE.DodecahedronGeometry(0.55 * scale, 1);
   const foliageOffsets = [
-    { x: 0, y: 1.45, z: 0, r: 1.0, mat: materials.foliageBright },
-    { x: -0.35, y: 1.25, z: 0.22, r: 0.78, mat: outdoorMats.foliageMid },
-    { x: 0.38, y: 1.28, z: -0.18, r: 0.82, mat: materials.foliageBright },
-    { x: 0.08, y: 1.88, z: 0.05, r: 0.72, mat: outdoorMats.pucukShoot },
-    { x: -0.22, y: 1.72, z: -0.15, r: 0.58, mat: outdoorMats.pucukShoot }
+    { x: 0, y: 1.45, z: 0, r: 1.0, mat: outdoorMats.canopyBright },
+    { x: -0.35, y: 1.25, z: 0.22, r: 0.78, mat: outdoorMats.canopyMid },
+    { x: 0.38, y: 1.28, z: -0.18, r: 0.82, mat: outdoorMats.canopyBright },
+    { x: 0.08, y: 1.88, z: 0.05, r: 0.72, mat: outdoorMats.canopyShoot },
+    { x: -0.22, y: 1.72, z: -0.15, r: 0.58, mat: outdoorMats.canopyShoot },
+    { x: 0.3, y: 1.7, z: 0.25, r: 0.5, mat: outdoorMats.canopyShoot }
   ];
 
-  for (const f of foliageOffsets) {
-    const lobe = new THREE.Mesh(lobeGeo, f.mat);
-    lobe.scale.setScalar(f.r);
+  for (const [fi, f] of foliageOffsets.entries()) {
+    const lobe = new THREE.Mesh(foliageBlob(fi + 1), f.mat);
+    lobe.scale.setScalar(f.r * 0.6 * scale);
     lobe.position.set(f.x * scale, f.y * scale, f.z * scale);
     lobe.castShadow = true;
     lobe.receiveShadow = true;
@@ -908,12 +908,12 @@ function createPucukMerahTree(scale, seed, materials, outdoorMats) {
 function createTropicalShrub(scale, seed, hasFlowers, materials, outdoorMats) {
   const shrub = new THREE.Group();
   const rng = createRng(seed);
-  const geo = new THREE.DodecahedronGeometry(0.32 * scale, 1);
+  const base = 0.36 * scale;
 
-  for (let i = 0; i < 4; i++) {
-    const puff = new THREE.Mesh(geo, i % 2 === 0 ? materials.foliageDark : materials.foliageBright);
-    puff.position.set((rng() - 0.5) * 0.38 * scale, (0.2 + rng() * 0.16) * scale, (rng() - 0.5) * 0.38 * scale);
-    puff.scale.set(0.9 + rng() * 0.4, 0.75 + rng() * 0.3, 0.9 + rng() * 0.4);
+  for (let i = 0; i < 5; i++) {
+    const puff = new THREE.Mesh(foliageBlob(i, 1), i % 2 === 0 ? outdoorMats.shrubDark : outdoorMats.shrubBright);
+    puff.position.set((rng() - 0.5) * 0.42 * scale, (0.2 + rng() * 0.16) * scale, (rng() - 0.5) * 0.42 * scale);
+    puff.scale.set(base * (0.9 + rng() * 0.4), base * (0.75 + rng() * 0.3), base * (0.9 + rng() * 0.4));
     puff.castShadow = true;
     puff.receiveShadow = true;
     shrub.add(puff);
@@ -1053,8 +1053,15 @@ export function createOutdoor(layoutSpec, materials) {
     rubberWheel: new THREE.MeshStandardMaterial({ color: 0x1b1e22, roughness: 0.85, metalness: 0.05 }),
     steelAxle: new THREE.MeshStandardMaterial({ color: 0x9aa2ab, roughness: 0.4, metalness: 0.7 }),
     foliageMid: new THREE.MeshStandardMaterial({ color: 0x3b7330, roughness: 0.84, metalness: 0.02 }),
+    // Tree crowns: vertex-shaded leafy blobs that sway in the wind
+    canopyDark: applyWind(new THREE.MeshStandardMaterial({ color: 0x356f2c, roughness: 0.88, vertexColors: true }), { strength: 0.07, minY: 1.4, maxY: 6.5, leaf: 7 }),
+    canopyBright: applyWind(new THREE.MeshStandardMaterial({ color: 0x66a544, roughness: 0.86, vertexColors: true }), { strength: 0.07, minY: 1.4, maxY: 6.5, leaf: 7 }),
+    canopyMid: applyWind(new THREE.MeshStandardMaterial({ color: 0x488a37, roughness: 0.87, vertexColors: true }), { strength: 0.07, minY: 1.4, maxY: 6.5, leaf: 7 }),
+    canopyShoot: applyWind(new THREE.MeshStandardMaterial({ color: 0xc9743a, roughness: 0.8, vertexColors: true }), { strength: 0.05, minY: 0.6, maxY: 3.0, leaf: 9 }),
+    shrubDark: applyWind(new THREE.MeshStandardMaterial({ color: 0x38702d, roughness: 0.88, vertexColors: true }), { strength: 0.012, minY: -0.2, maxY: 1.4, leaf: 11 }),
+    shrubBright: applyWind(new THREE.MeshStandardMaterial({ color: 0x5f9c40, roughness: 0.86, vertexColors: true }), { strength: 0.012, minY: -0.2, maxY: 1.4, leaf: 11 }),
     palmStem: new THREE.MeshStandardMaterial({ color: 0x6f8245, roughness: 0.82, metalness: 0.0 }),
-    palmFrond: new THREE.MeshStandardMaterial({ color: 0x6ba143, roughness: 0.78, metalness: 0.02, side: THREE.DoubleSide }),
+    palmFrond: applyWind(new THREE.MeshStandardMaterial({ color: 0x6ba143, roughness: 0.78, metalness: 0.02, side: THREE.DoubleSide }), { strength: 0.05, minY: 0.5, maxY: 3.2 }),
     pucukShoot: new THREE.MeshStandardMaterial({ color: 0xb57c32, roughness: 0.78, metalness: 0.02 }),
     coralBloom: new THREE.MeshStandardMaterial({ color: 0xd95836, roughness: 0.75, metalness: 0.0 })
   };

@@ -40,6 +40,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0b1120);
 
 const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.08, 420);
+camera.layers.enable(1); // layer 1 = distant surroundings (skipped by the floor reflection)
 const initialPreset = LAYOUT_SPEC.cameraPresets[0];
 camera.position.set(...initialPreset.position);
 
@@ -423,7 +424,16 @@ function trackPerformance(dt) {
 /* Boot                                                                */
 /* ------------------------------------------------------------------ */
 
-const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+// Resolves on the next paint, or after a short timeout when the tab is in the background
+// (browsers pause requestAnimationFrame there, which would otherwise stall the loader).
+const nextFrame = () =>
+  new Promise((resolve) => {
+    const timer = setTimeout(resolve, 60);
+    requestAnimationFrame(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
 
 async function step(label) {
   if (loadingStepEl) loadingStepEl.textContent = label;
@@ -456,14 +466,20 @@ async function boot() {
   worldGroup.add(createPeople(LAYOUT_SPEC, materials));
 
   await step("Planting the garden and the neighbourhood");
-  worldGroup.add(createOutdoor(LAYOUT_SPEC, materials));
-  worldGroup.add(createSurroundings(LAYOUT_SPEC, materials));
+  const outdoorGroup = createOutdoor(LAYOUT_SPEC, materials);
+  worldGroup.add(outdoorGroup);
+  const surroundings = createSurroundings(LAYOUT_SPEC, materials, { outdoorGroup });
+  worldGroup.add(surroundings);
 
   await step("Batching geometry");
   const mergeStats = mergeStaticMeshes(worldGroup);
 
   await step("Lighting the scene");
   setupLampLights();
+  // Street lamps along the driveway (the three nearest the hall get a real light)
+  for (const [x, y, z] of (surroundings.userData.nightLights || []).slice(0, 3)) {
+    addLamp(x, y, z, { color: 0xffd9a0, night: 30, distance: 15 });
+  }
   atmosphere = createAtmosphere({ scene, renderer });
   atmosphere.onChange(applyAtmosphereState);
   scene.background = null;
@@ -500,6 +516,7 @@ async function boot() {
     setQuality: (level) => setQuality(level, { manual: true }),
     enterWalk,
     exitWalk,
+    renderFrame,
     presetCount: LAYOUT_SPEC.cameraPresets.length,
     get fps() {
       return fpsWindow.fps;
@@ -529,6 +546,10 @@ let elapsed = 0;
 
 function animate() {
   requestAnimationFrame(animate);
+  renderFrame();
+}
+
+function renderFrame() {
   const now = performance.now();
   const rawDt = (now - lastStamp) / 1000;
   lastStamp = now;

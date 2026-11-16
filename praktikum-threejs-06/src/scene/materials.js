@@ -691,6 +691,26 @@ export function createSignTexture({
 }
 
 /** Free-form canvas texture for one-off signs, posters and decals. */
+/**
+ * The hall's lamps hang just under the roof sheets and cast no shadows. With a strong bump
+ * map, the corrugation's tilted normals would catch that light on the *top* of the roof at
+ * night. This rejects point lights that sit behind the true (un-bumped) surface.
+ */
+function blockLightFromBehind(material) {
+  material.onBeforeCompile = (shader) => {
+    const call = "getPointLightInfo( pointLight, geometryPosition, directLight );";
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <lights_fragment_begin>",
+      THREE.ShaderChunk.lights_fragment_begin.replace(
+        call,
+        call + " directLight.color *= step( 0.0, dot( nonPerturbedNormal, directLight.direction ) );"
+      )
+    );
+  };
+  material.customProgramCacheKey = () => "blockLightFromBehind";
+  return material;
+}
+
 export function createCanvasTexture(width, height, draw, { transparent = false } = {}) {
   const canvas = makeCanvas(width, height);
   const ctx = canvas.getContext("2d");
@@ -789,13 +809,15 @@ export function createMaterials() {
       roughness: 0.62,
       metalness: 0.0
     }),
-    roofMetal: new THREE.MeshStandardMaterial({
-      map: roof.map,
-      bumpMap: roof.bumpMap,
-      bumpScale: 1.1,
-      roughness: 0.52,
-      metalness: 0.5
-    }),
+    roofMetal: blockLightFromBehind(
+      new THREE.MeshStandardMaterial({
+        map: roof.map,
+        bumpMap: roof.bumpMap,
+        bumpScale: 1.1,
+        roughness: 0.52,
+        metalness: 0.5
+      })
+    ),
     blackMullion: new THREE.MeshStandardMaterial({
       color: 0x1c2026,
       roughness: 0.42,
