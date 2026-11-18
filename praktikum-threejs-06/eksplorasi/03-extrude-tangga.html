@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>03 · ExtrudeGeometry Tangga</title>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "three";
+      import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+      import { setup, loop, floor, PAGE_STYLE } from "./common.js";
+      document.head.insertAdjacentHTML("beforeend", `<style>${PAGE_STYLE}</style>`);
+
+      // Eksplorasi 3: memodelkan tangga putar (switchback) kantin.
+      // Pendekatan awal: tumpukan Box per anak tangga (banyak sisi tumpang-tindih).
+      // Perbaikan: profil samping 2D (Shape) di-extrude menjadi satu solid tertutup + bordes setengah lingkaran.
+      const ctx = setup({
+        title: "Eksplorasi 3 — Shape & ExtrudeGeometry",
+        note: "Kanan: tangga dari tumpukan BoxGeometry (setiap box menimpa box sebelumnya)<br>Kiri: profil 2D <code>THREE.Shape</code> → <code>ExtrudeGeometry</code>, bordes setengah lingkaran dari <code>absarc</code> + <code>toCreasedNormals</code>",
+        camPos: [7.8, 3.4, -4.6],
+        target: [0.2, 0.9, 0.4]
+      });
+      const { scene } = ctx;
+      floor(scene, 30, 0x7c818b);
+      scene.add(new THREE.HemisphereLight(0xe6eeff, 0x40382c, 0.8));
+      const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+      sun.position.set(6, 9, 6);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      scene.add(sun);
+
+      const plaster = new THREE.MeshStandardMaterial({ color: 0xeeeae2, roughness: 0.85 });
+      const edgeMat = new THREE.LineBasicMaterial({ color: 0x1d2433 });
+      const steps = 10, run = 0.28, rise = 0.17, width = 1.1, z0 = -1.4;
+      const zEnd = z0 + steps * run;
+      const withEdges = (mesh) => {
+        mesh.castShadow = mesh.receiveShadow = true;
+        mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 20), edgeMat));
+        return mesh;
+      };
+      const tri = (g) => (g.index ? g.index.count : g.attributes.position.count) / 3;
+
+      // --- Tumpukan Box (tampil di kanan layar), tiap box menimpa box sebelumnya ---
+      const naive = new THREE.Group();
+      let naiveTris = 0;
+      for (let i = 0; i < steps; i++) {
+        const h = (i + 1) * rise;
+        const len = (steps - i) * run;
+        const g = new THREE.BoxGeometry(width, h, len);
+        naiveTris += tri(g);
+        const b = withEdges(new THREE.Mesh(g, plaster));
+        b.position.set(width / 2, h / 2, zEnd - len / 2);
+        naive.add(b);
+      }
+      naive.position.x = -2.6;
+      scene.add(naive);
+
+      // --- Satu profil samping (Shape) di-extrude menjadi solid tertutup ---
+      const shape = new THREE.Shape();
+      shape.moveTo(-z0, 0);
+      for (let i = 0; i < steps; i++) {
+        shape.lineTo(-(z0 + i * run), (i + 1) * rise);
+        shape.lineTo(-(z0 + (i + 1) * run), (i + 1) * rise);
+      }
+      shape.lineTo(-zEnd, 0);
+      shape.closePath();
+      const flightGeo = new THREE.ExtrudeGeometry(shape, { depth: width, bevelEnabled: false });
+      flightGeo.rotateY(Math.PI / 2); // sumbu-x shape -> -z dunia, kedalaman extrude -> +x dunia
+      const good = new THREE.Group();
+      good.add(withEdges(new THREE.Mesh(flightGeo, plaster)));
+
+      // Bordes setengah lingkaran di ujung atas: Shape + absarc, di-extrude vertikal
+      const r = width / 2 + 0.12;
+      const half = new THREE.Shape();
+      half.moveTo(width / 2 - r, -zEnd);
+      half.absarc(width / 2, -zEnd, r, Math.PI, Math.PI * 2, false);
+      half.closePath();
+      let drumGeo = new THREE.ExtrudeGeometry(half, { depth: steps * rise, bevelEnabled: false, curveSegments: 32 });
+      drumGeo.rotateX(-Math.PI / 2); // sumbu-y shape -> -z dunia, kedalaman -> +y dunia
+      drumGeo = toCreasedNormals(drumGeo, Math.PI / 5); // sisi lengkung halus, tepi tetap tajam
+      good.add(withEdges(new THREE.Mesh(drumGeo, plaster)));
+      good.position.x = 1.2;
+      scene.add(good);
+
+      ctx.label.innerHTML += `<br>Kanan: ${steps} mesh, ${naiveTris} segitiga (sisi dalam tertimbun) · Kiri: 2 mesh, ${tri(flightGeo) + tri(drumGeo)} segitiga`;
+
+      loop(ctx);
+    </script>
+  </body>
+</html>
