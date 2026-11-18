@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>01 · Dasar Three.js</title>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "three";
+      import { setup, loop, floor, PAGE_STYLE } from "./common.js";
+      document.head.insertAdjacentHTML("beforeend", `<style>${PAGE_STYLE}</style>`);
+
+      // Eksplorasi 1: scene graph, kamera, renderer, primitif geometri, transformasi
+      const ctx = setup({
+        title: "Eksplorasi 1 — Dasar Three.js",
+        note: "Scene · PerspectiveCamera · WebGLRenderer · OrbitControls<br>Primitif: Box, Sphere, Cylinder, Cone, Torus · Group & transformasi",
+        camPos: [4.5, 3.2, 6.5],
+        target: [0, 0.8, 0]
+      });
+      const { scene } = ctx;
+
+      floor(scene, 30, 0x596070);
+      scene.add(new THREE.GridHelper(30, 30, 0x9aa3b5, 0x3c4352));
+      const axes = new THREE.AxesHelper(2.5); // merah = X, hijau = Y, biru = Z
+      axes.position.set(-4.5, 0.01, 3);
+      scene.add(axes);
+
+      scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a3020, 0.9));
+      const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+      sun.position.set(5, 9, 4);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      scene.add(sun);
+
+      const mat = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.5 });
+      const shapes = [
+        [new THREE.BoxGeometry(1.2, 1.2, 1.2), 0xe4572e, -3],
+        [new THREE.SphereGeometry(0.7, 40, 24), 0x29a3b8, -1.5],
+        [new THREE.CylinderGeometry(0.55, 0.55, 1.4, 36), 0xf3a712, 0],
+        [new THREE.ConeGeometry(0.65, 1.4, 36), 0x76b041, 1.5],
+        [new THREE.TorusGeometry(0.5, 0.2, 20, 48), 0xa05cd5, 3]
+      ];
+      const spinning = [];
+      for (const [geo, color, x] of shapes) {
+        const m = new THREE.Mesh(geo, mat(color));
+        m.position.set(x, 0.75, 0);
+        m.castShadow = m.receiveShadow = true;
+        scene.add(m);
+        spinning.push(m);
+      }
+
+      // Group: meja sederhana dari beberapa Box — anak ikut bergerak bersama induknya
+      const table = new THREE.Group();
+      const wood = mat(0x9c6b3f);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 1), wood);
+      top.position.y = 0.75;
+      table.add(top);
+      for (const [x, z] of [[-0.9, -0.42], [0.9, -0.42], [-0.9, 0.42], [0.9, 0.42]]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.75, 0.07), wood);
+        leg.position.set(x, 0.375, z);
+        table.add(leg);
+      }
+      table.traverse((o) => (o.castShadow = o.receiveShadow = true));
+      table.position.set(0, 0, -3);
+      table.rotation.y = 0.35;
+      scene.add(table);
+
+      loop(ctx, (t) => {
+        for (const m of spinning) m.rotation.y = t * 0.6;
+        spinning[4].rotation.x = t * 0.8;
+      });
+    </script>
+  </body>
+</html>
