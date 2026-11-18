@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>05 · Shader Angin &amp; Instancing</title>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "three";
+      import { setup, loop, floor, PAGE_STYLE } from "./common.js";
+      document.head.insertAdjacentHTML("beforeend", `<style>${PAGE_STYLE}</style>`);
+
+      // Eksplorasi 5: animasi vertex di GPU (onBeforeCompile) + InstancedMesh untuk ribuan rumput.
+      const ctx = setup({
+        title: "Eksplorasi 5 — Shader angin & InstancedMesh",
+        note: "Daun & rumput bergoyang: posisi vertex digeser di vertex shader lewat <code>material.onBeforeCompile</code><br>6000 helai rumput = 1 <code>InstancedMesh</code> (1 draw call)",
+        camPos: [6.5, 3.2, 7.5],
+        target: [0, 1.4, 0],
+        background: 0x8fb8de
+      });
+      const { scene } = ctx;
+      scene.fog = new THREE.Fog(0x8fb8de, 12, 30);
+      floor(scene, 60, 0x5d7a3a);
+      scene.add(new THREE.HemisphereLight(0xdfefff, 0x4a5a2a, 1.0));
+      const sun = new THREE.DirectionalLight(0xfff0d0, 2.4);
+      sun.position.set(6, 10, 4);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10 });
+      scene.add(sun);
+
+      const uTime = { value: 0 };
+      /** Menambahkan goyangan angin ke material standar; makin tinggi vertex, makin besar goyangannya. */
+      function applyWind(material, strength, minY = 0) {
+        material.onBeforeCompile = (shader) => {
+          shader.uniforms.uTime = uTime;
+          shader.vertexShader = "uniform float uTime;\n" + shader.vertexShader.replace(
+            "#include <begin_vertex>",
+            `#include <begin_vertex>
+             vec4 wp = modelMatrix * vec4(position, 1.0);
+             #ifdef USE_INSTANCING
+               wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
+             #endif
+             float h = max(wp.y - ${minY.toFixed(2)}, 0.0);
+             float phase = wp.x * 0.7 + wp.z * 0.5;
+             transformed.x += sin(uTime * 1.8 + phase) * ${strength.toFixed(3)} * h * h;
+             transformed.z += cos(uTime * 1.3 + phase * 1.3) * ${(strength * 0.6).toFixed(3)} * h * h;`
+          );
+        };
+        return material;
+      }
+
+      // Pohon: batang silinder + mahkota icosahedron yang di-noise
+      const leaf = applyWind(new THREE.MeshStandardMaterial({ color: 0x4f8a35, roughness: 0.9, flatShading: true }), 0.02, 1.2);
+      const bark = new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 1 });
+      for (const [x, z, s] of [[-2.2, -1.5, 1.1], [1.8, -2.4, 1.3], [3.5, 1.2, 0.9], [-4, 2, 1]]) {
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * s, 0.18 * s, 2.2 * s, 10), bark);
+        trunk.position.set(x, 1.1 * s, z);
+        const crownGeo = new THREE.IcosahedronGeometry(1.1 * s, 3);
+        const p = crownGeo.attributes.position;
+        for (let i = 0; i < p.count; i++) {
+          const v = new THREE.Vector3().fromBufferAttribute(p, i);
+          v.multiplyScalar(1 + 0.18 * Math.sin(v.x * 3.1) * Math.cos(v.y * 2.7 + v.z * 1.9));
+          p.setXYZ(i, v.x, v.y, v.z);
+        }
+        crownGeo.computeVertexNormals();
+        const crown = new THREE.Mesh(crownGeo, leaf);
+        crown.position.set(x, 2.6 * s, z);
+        for (const m of [trunk, crown]) { m.castShadow = m.receiveShadow = true; scene.add(m); }
+      }
+
+      // Rumput: satu helai (kerucut pipih) di-instance 6000 kali dengan matriks berbeda
+      const bladeGeo = new THREE.ConeGeometry(0.035, 0.45, 3);
+      bladeGeo.translate(0, 0.225, 0);
+      const grassMat = applyWind(new THREE.MeshStandardMaterial({ color: 0x7fb24a, roughness: 0.8 }), 0.35);
+      const count = 6000;
+      const grass = new THREE.InstancedMesh(bladeGeo, grassMat, count);
+      const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), pos = new THREE.Vector3(), scl = new THREE.Vector3();
+      const color = new THREE.Color();
+      for (let i = 0; i < count; i++) {
+        const r = Math.sqrt(Math.random()) * 9, a = Math.random() * Math.PI * 2;
+        pos.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+        e.set((Math.random() - 0.5) * 0.4, Math.random() * Math.PI, (Math.random() - 0.5) * 0.4);
+        const s = 0.6 + Math.random() * 0.8;
+        scl.set(s, s, s);
+        grass.setMatrixAt(i, m4.compose(pos, q.setFromEuler(e), scl));
+        grass.setColorAt(i, color.setHSL(0.25 + Math.random() * 0.06, 0.5, 0.32 + Math.random() * 0.15));
+      }
+      grass.receiveShadow = true;
+      scene.add(grass);
+
+      loop(ctx, (t) => (uTime.value = t));
+    </script>
+  </body>
+</html>
