@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>06 · Optimasi Merge</title>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "three";
+      import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+      import { setup, loop, floor, PAGE_STYLE } from "./common.js";
+      document.head.insertAdjacentHTML("beforeend", `<style>${PAGE_STYLE}
+        .stats { position: fixed; right: 16px; top: 14px; color: #f2f4f8; background: rgba(10,14,22,.78);
+                 padding: 10px 14px; border-radius: 8px; font: 14px/1.5 ui-monospace, Consolas, monospace; white-space: pre; }
+      </style>`);
+
+      // Eksplorasi 6: menggabungkan mesh statis per material untuk mengurangi draw call.
+      // Tekan tombol M untuk berpindah mode.
+      const ctx = setup({
+        title: "Eksplorasi 6 — Optimasi: merge geometri statis",
+        note: "Ruang makan berisi 20×12 set meja + 2 bangku (1.200 mesh).<br>Mesh statis dengan material sama digabung (<code>mergeGeometries</code>) → draw call turun drastis. Tekan <b>M</b> untuk ganti mode.",
+        camPos: [14, 9, 16],
+        target: [0, 0, 0]
+      });
+      const { scene, renderer, camera } = ctx;
+      renderer.info.autoReset = false;
+      floor(scene, 70, 0x7a7f88);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.1));
+      const sun = new THREE.DirectionalLight(0xffffff, 1.8);
+      sun.position.set(10, 15, 8);
+      scene.add(sun);
+
+      const wood = new THREE.MeshStandardMaterial({ color: 0x9a6a3c, roughness: 0.7 });
+      const steel = new THREE.MeshStandardMaterial({ color: 0xb8bec6, metalness: 0.8, roughness: 0.35 });
+
+      // Satu set: daun meja + 2 bangku (kayu) dan 2 rangka kaki (baja)
+      const parts = [
+        [new THREE.BoxGeometry(1.6, 0.06, 0.8), wood, [0, 0.75, 0]],
+        [new THREE.BoxGeometry(1.6, 0.05, 0.3), wood, [0, 0.45, -0.65]],
+        [new THREE.BoxGeometry(1.6, 0.05, 0.3), wood, [0, 0.45, 0.65]],
+        [new THREE.BoxGeometry(0.06, 0.72, 1.6), steel, [-0.7, 0.36, 0]],
+        [new THREE.BoxGeometry(0.06, 0.72, 1.6), steel, [0.7, 0.36, 0]]
+      ];
+
+      const individual = new THREE.Group();
+      const buckets = new Map();
+      for (let i = 0; i < 20; i++) {
+        for (let j = 0; j < 12; j++) {
+          const x = (i - 9.5) * 2.2, z = (j - 5.5) * 2.4;
+          for (const [geo, mat, [px, py, pz]] of parts) {
+            const m = new THREE.Mesh(geo, mat);
+            m.position.set(x + px, py, z + pz);
+            individual.add(m);
+            m.updateMatrix();
+            if (!buckets.has(mat)) buckets.set(mat, []);
+            buckets.get(mat).push(geo.clone().applyMatrix4(m.matrix));
+          }
+        }
+      }
+      const merged = new THREE.Group();
+      for (const [mat, geos] of buckets) merged.add(new THREE.Mesh(mergeGeometries(geos), mat));
+
+      scene.add(individual, merged);
+      let mode = new URLSearchParams(location.search).get("mode") === "merged" ? "merged" : "individual";
+      const stats = document.createElement("div");
+      stats.className = "stats";
+      document.body.appendChild(stats);
+      window.addEventListener("keydown", (e) => {
+        if (e.key.toLowerCase() === "m") mode = mode === "merged" ? "individual" : "merged";
+      });
+
+      let frames = 0, acc = 0, fps = 0;
+      loop(ctx, (t, dt) => {
+        individual.visible = mode === "individual";
+        merged.visible = mode === "merged";
+        frames++; acc += dt;
+        if (acc > 0.5) { fps = frames / acc; frames = 0; acc = 0; }
+        const r = renderer.info.render;
+        stats.textContent = `Mode       : ${mode === "merged" ? "MERGED per material" : "INDIVIDUAL (1 mesh per bagian)"}\n` +
+          `Objek mesh : ${mode === "merged" ? merged.children.length : individual.children.length}\n` +
+          `Draw call  : ${r.calls}\nSegitiga   : ${r.triangles.toLocaleString("id-ID")}\nFPS        : ${fps.toFixed(0)}`;
+        renderer.info.reset();
+      });
+    </script>
+  </body>
+</html>
