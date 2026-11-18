@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>04 · CanvasTexture</title>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "three";
+      import { setup, loop, floor, PAGE_STYLE } from "./common.js";
+      document.head.insertAdjacentHTML("beforeend", `<style>${PAGE_STYLE}</style>`);
+
+      // Eksplorasi 4: tekstur papan tulisan dibuat dari <canvas> 2D lalu dipakai sebagai CanvasTexture.
+      const ctx = setup({
+        title: "Eksplorasi 4 — CanvasTexture untuk papan & tulisan",
+        note: "Teks digambar di canvas 2D → <code>THREE.CanvasTexture</code> → material papan<br>Atas: teks panjang terpotong di tepi papan · Bawah: ukuran font diperkecil otomatis (auto-fit)",
+        camPos: [0, 1.6, 5.4],
+        target: [0, 1.55, 0],
+        background: 0x232a36
+      });
+      const { scene, renderer } = ctx;
+      renderer.toneMapping = THREE.NoToneMapping; // warna papan tampil apa adanya
+      floor(scene, 20, 0x6d6a64);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x404040, 1.2));
+      const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+      sun.position.set(2, 5, 6);
+      scene.add(sun);
+
+      /** Membungkus ctx.fillText: jika teks lebih lebar dari ruang yang tersedia, font diperkecil. */
+      function autoFitText(c, width, margin = width * 0.06) {
+        const draw = c.fillText.bind(c);
+        c.fillText = (text, x, y) => {
+          const avail = c.textAlign === "center" ? 2 * Math.min(x, width - x) - 2 * margin : width - x - margin;
+          const w = c.measureText(text).width;
+          if (w > avail) {
+            const font = c.font;
+            c.font = font.replace(/(\d+(?:\.\d+)?)px/, (_, px) => `${((px * avail) / w).toFixed(1)}px`);
+            draw(text, x, y);
+            c.font = font;
+          } else draw(text, x, y);
+        };
+      }
+
+      function signTexture({ bg, fg, title, lines }, fit) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1024;
+        canvas.height = 512;
+        const c = canvas.getContext("2d");
+        if (fit) autoFitText(c, canvas.width);
+        c.fillStyle = bg;
+        c.fillRect(0, 0, 1024, 512);
+        c.strokeStyle = fg;
+        c.lineWidth = 14;
+        c.strokeRect(20, 20, 984, 472);
+        c.fillStyle = fg;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.font = "bold 120px Arial";
+        c.fillText(title, 512, 140);
+        c.font = "64px Arial";
+        lines.forEach((l, i) => c.fillText(l, 512, 280 + i * 90));
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        return tex;
+      }
+
+      const signs = [
+        { bg: "#f2c919", fg: "#1b1b1b", title: "PERHATIAN", lines: ["Dilarang membawa makanan ke kamar", "Jagalah kebersihan kantin asrama"] },
+        { bg: "#1f5fae", fg: "#ffffff", title: "JAM KUNJUNG", lines: ["Mulai Pukul 09.00 WIB s/d 22.00 WIB", "Tamu wajib lapor ke kantor asrama"] }
+      ];
+      const board = new THREE.BoxGeometry(2.0, 1.0, 0.04);
+      const edge = new THREE.MeshStandardMaterial({ color: 0x333333 });
+      signs.forEach((s, col) => {
+        [false, true].forEach((fit, row) => {
+          const face = new THREE.MeshStandardMaterial({ map: signTexture(s, fit), roughness: 0.6 });
+          const mesh = new THREE.Mesh(board, [edge, edge, edge, edge, face, edge]);
+          mesh.position.set((col - 0.5) * 2.3, 2.15 - row * 1.2, 0);
+          scene.add(mesh);
+        });
+      });
+      loop(ctx);
+    </script>
+  </body>
+</html>
