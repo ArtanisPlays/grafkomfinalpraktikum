@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<title>Laporan Eksplorasi Teknologi FP Grafkom — Three.js</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 10.6pt; line-height: 1.5; color: #1c2230; margin: 0; }
+  h1 { font-size: 20pt; margin: 0 0 4px; color: #12305a; }
+  h2 { font-size: 13.5pt; color: #12305a; border-bottom: 2px solid #12305a; padding-bottom: 3px; margin: 22px 0 10px; break-after: avoid; }
+  h3 { font-size: 11.5pt; color: #1d4a85; margin: 16px 0 6px; break-after: avoid; }
+  p { margin: 0 0 8px; text-align: justify; }
+  ul, ol { margin: 0 0 8px 0; padding-left: 20px; }
+  li { margin-bottom: 3px; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 9pt; background: #eef1f6; padding: 0 3px; border-radius: 3px; }
+  pre { font-family: Consolas, "Cascadia Mono", monospace; font-size: 8.4pt; line-height: 1.38; background: #f3f5f9; border-left: 3px solid #1d4a85;
+        padding: 8px 10px; margin: 6px 0 10px; white-space: pre-wrap; break-inside: avoid; }
+  figure { margin: 8px 0 12px; break-inside: avoid; text-align: center; }
+  figure img { width: 100%; border: 1px solid #c9d0db; border-radius: 3px; }
+  figcaption { font-size: 9pt; color: #4a5468; margin-top: 3px; }
+  .pair { display: flex; gap: 8px; }
+  .pair figure { flex: 1; margin: 6px 0 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 9.6pt; margin: 6px 0 12px; break-inside: avoid; }
+  th, td { border: 1px solid #c9d0db; padding: 4px 7px; text-align: left; vertical-align: top; }
+  th { background: #e6ecf5; }
+  .cover { height: 247mm; display: flex; flex-direction: column; justify-content: center; text-align: center; break-after: page; }
+  .cover .sub { font-size: 13pt; color: #3a4a66; margin-bottom: 26px; }
+  .cover .course { font-size: 11.5pt; margin-bottom: 40px; }
+  .cover table { width: 70%; margin: 0 auto 40px; font-size: 11pt; }
+  .cover .inst { font-size: 11.5pt; font-weight: 600; line-height: 1.6; }
+  .ph { background: #fff3c4; padding: 0 3px; }
+  .note { background: #f3f7ee; border: 1px solid #c8dbb5; border-radius: 4px; padding: 7px 10px; margin: 6px 0 10px; font-size: 9.8pt; }
+  .pb { break-before: page; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <h1>Laporan Eksplorasi Teknologi<br>Final Project Grafika Komputer</h1>
+  <div class="sub">Eksplorasi Graphics Library <b>Three.js</b> (WebGL) untuk Pemodelan 3D<br>Kantin &amp; Hall Komunal Asrama Mahasiswa ITS</div>
+  <div class="course">Mata Kuliah Grafika Komputer — Kelas <span class="ph">[Kelas]</span><br>Dosen: <span class="ph">[Nama Dosen]</span></div>
+  <table>
+    <tr><th colspan="2" style="text-align:center">Kelompok <span class="ph">[Nama / Nomor Kelompok]</span></th></tr>
+    <tr><th style="width:62%">Nama</th><th>NRP</th></tr>
+    <tr><td><span class="ph">[Nama Anggota 1]</span></td><td><span class="ph">[NRP]</span></td></tr>
+    <tr><td><span class="ph">[Nama Anggota 2]</span></td><td><span class="ph">[NRP]</span></td></tr>
+    <tr><td><span class="ph">[Nama Anggota 3]</span></td><td><span class="ph">[NRP]</span></td></tr>
+  </table>
+  <div class="inst">Departemen <span class="ph">[Departemen]</span><br>Institut Teknologi Sepuluh Nopember<br>Surabaya, November 2026</div>
+</section>
+
+<h2>1. Pendahuluan</h2>
+<p>Final project kelompok kami adalah model 3D interaktif <b>Kantin dan Hall Komunal Asrama Mahasiswa ITS</b>. Model ini mencakup area lesehan, deretan kedai makanan, sayap meja baja, tangga putar menuju mezanin, kantor asrama berdinding kaca, dan area luar (taman, parkir motor, gedung asrama di sekitarnya). Model dibangun berdasarkan foto referensi yang kami ambil langsung di lokasi.</p>
+<p>Laporan ini mendokumentasikan eksplorasi graphics library (GL) yang kami pakai, yaitu <b>Three.js</b>. Eksplorasi dilakukan dengan dua cara:</p>
+<ol>
+  <li><b>Demo eksplorasi terpisah</b> (folder <code>praktikum-threejs-06/eksplorasi/</code>). Ada enam halaman kecil, masing-masing menguji satu kemampuan library secara terisolasi.</li>
+  <li><b>Penerapan pada model final project</b>. Teknik yang sudah dicoba di demo diterapkan pada scene kantin yang sebenarnya.</li>
+</ol>
+
+<h2>2. Pemilihan Graphics Library</h2>
+<p>Kami membandingkan tiga opsi untuk merender grafik 3D di browser:</p>
+<table>
+  <tr><th>Kriteria</th><th>WebGL murni</th><th>Babylon.js</th><th>Three.js (dipilih)</th></tr>
+  <tr><td>Tingkat abstraksi</td><td>Sangat rendah: buffer, shader, dan matriks ditulis sendiri</td><td>Tinggi, berupa engine lengkap</td><td>Menengah: scene graph + material siap pakai, tetapi shader tetap bisa diubah</td></tr>
+  <tr><td>Kurva belajar</td><td>Curam</td><td>Sedang</td><td>Landai, banyak contoh resmi</td></tr>
+  <tr><td>Kontrol atas pipeline</td><td>Penuh</td><td>Sedang</td><td>Tinggi: <code>onBeforeCompile</code>, <code>ShaderMaterial</code>, post-processing</td></tr>
+  <tr><td>Ukuran dan ekosistem</td><td>—</td><td>Besar</td><td>Ringan, addon lengkap (controls, loader, postprocessing, utils)</td></tr>
+</table>
+<p>Three.js kami pilih karena konsep dasar grafika komputer (scene graph, transformasi, kamera, material, pencahayaan, shader) tetap terlihat jelas di kodenya, tetapi kami tidak perlu menulis ulang hal-hal dasar seperti pemuatan buffer atau shadow mapping. Proyek dijalankan dengan <b>Vite</b> sebagai dev server dan bundler (Three.js r0.186, Vite 8).</p>
+
+<h3>Lingkungan kerja</h3>
+<pre>npm create vite@latest praktikum-threejs-06 -- --template vanilla
+cd praktikum-threejs-06 && npm install three
+npm run dev        # http://localhost:5173  (demo: /eksplorasi/01-dasar.html, dst.)</pre>
+
+<h2 class="pb">3. Hasil Eksplorasi</h2>
+
+<h3>3.1 Dasar: scene, kamera, renderer, primitif, dan Group</h3>
+<p>Setiap aplikasi Three.js terdiri dari <code>Scene</code> (pohon objek), <code>Camera</code> (di sini <code>PerspectiveCamera</code> dengan FOV 50°), dan <code>WebGLRenderer</code>. Kami mencoba primitif bawaan (Box, Sphere, Cylinder, Cone, Torus) dan <code>OrbitControls</code> untuk memutar kamera. Kami juga membuat objek gabungan dengan <code>THREE.Group</code>: meja dari satu daun meja dan empat kaki. Transformasi pada <code>Group</code> otomatis diturunkan ke semua anaknya, sama seperti hierarki transformasi di materi kuliah.</p>
+<pre>const table = new THREE.Group();
+const top = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 1), wood);
+top.position.y = 0.75;
+table.add(top);                       // + 4 kaki (BoxGeometry tipis)
+table.position.set(0, 0, -3);
+table.rotation.y = 0.35;              // memutar seluruh meja sekaligus</pre>
+<figure><img src="img/01-dasar.jpg"><figcaption>Gambar 1. Demo 1: primitif dasar, AxesHelper (merah = X, hijau = Y, biru = Z), dan meja dari Group.</figcaption></figure>
+
+<h3>3.2 Material dan pencahayaan</h3>
+<p>Kami membandingkan lima jenis material dengan warna yang sama. <code>MeshBasicMaterial</code> tidak terpengaruh cahaya. <code>Lambert</code> hanya menghitung diffuse. <code>Phong</code> menambahkan specular. <code>Standard</code> dan <code>Physical</code> memakai model PBR (<i>physically based rendering</i>) dengan parameter <code>roughness</code> dan <code>metalness</code>. Baris belakang menunjukkan pengaruh roughness (kiri ke kanan) dan metalness (bawah = 0, atas = 1). Agar material logam punya sesuatu untuk dipantulkan, kami membuat <i>environment map</i> dengan <code>PMREMGenerator</code>.</p>
+<p>Sumber cahaya yang dicoba: <code>HemisphereLight</code> (cahaya langit dan pantulan tanah), <code>DirectionalLight</code> dengan bayangan (shadow map 2048²), <code>PointLight</code> oranye yang bergerak, dan <code>SpotLight</code> biru.</p>
+<figure><img src="img/02-material-cahaya.jpg"><figcaption>Gambar 2. Demo 2: jenis material (depan) dan grid roughness × metalness (belakang).</figcaption></figure>
+
+<h3>3.3 Pemodelan dengan Shape dan ExtrudeGeometry</h3>
+<p>Ini eksplorasi yang paling berpengaruh pada proyek kami. Awalnya tangga putar kantin disusun dari banyak <code>BoxGeometry</code> yang ditumpuk dan diputar. Hasilnya permukaan saling menembus (<i>z-fighting</i>), ada celah di sambungan, dan banyak sisi dalam yang tertimbun. Solusinya, profil samping tangga digambar sebagai <code>THREE.Shape</code> 2D lalu di-extrude sebesar lebar tangga sehingga menjadi <b>satu solid tertutup</b>. Bordes setengah lingkaran dibuat dari <code>Shape.absarc()</code> yang di-extrude vertikal. <code>toCreasedNormals</code> membuat sisi lengkungnya halus tetapi tepinya tetap tajam.</p>
+<pre>const shape = new THREE.Shape();
+shape.moveTo(-z0, 0);
+for (let i = 0; i &lt; steps; i++) {               // gigi tangga: naik (rise) lalu maju (run)
+  shape.lineTo(-(z0 + i * run), (i + 1) * rise);
+  shape.lineTo(-(z0 + (i + 1) * run), (i + 1) * rise);
+}
+shape.lineTo(-zEnd, 0); shape.closePath();
+const geo = new THREE.ExtrudeGeometry(shape, { depth: width, bevelEnabled: false });
+geo.rotateY(Math.PI / 2);                        // sumbu-x shape → sumbu-z dunia</pre>
+<figure><img src="img/03-extrude-tangga.jpg"><figcaption>Gambar 3. Demo 3: kiri, satu profil yang di-extrude dengan bordes setengah lingkaran; kanan, 10 box bertumpuk dengan sisi dalam yang tertimbun.</figcaption></figure>
+
+<h3>3.4 Tekstur dari canvas (CanvasTexture)</h3>
+<p>Kantin asrama punya banyak papan tulisan: PERHATIAN, jam kunjung, menu kedai, dan lain-lain. Daripada membuat gambar satu per satu, teks digambar di elemen <code>&lt;canvas&gt;</code> 2D lalu dipakai sebagai <code>THREE.CanvasTexture</code>. Masalah yang kami temukan: kalimat panjang terpotong di tepi papan. Kami memecahkannya dengan membungkus <code>fillText</code> supaya ukuran font mengecil otomatis bila teks lebih lebar dari ruang yang tersedia.</p>
+<pre>const w = ctx.measureText(text).width;
+if (w &gt; avail) ctx.font = font.replace(/(\d+)px/, (_, px) =&gt; `${(px * avail / w).toFixed(1)}px`);
+const tex = new THREE.CanvasTexture(canvas);
+tex.colorSpace = THREE.SRGBColorSpace;           // warna canvas = sRGB</pre>
+<figure><img src="img/04-canvas-texture.jpg"><figcaption>Gambar 4. Demo 4: baris atas, teks terpotong; baris bawah, dengan auto-fit.</figcaption></figure>
+
+<h3>3.5 Shader angin dan InstancedMesh</h3>
+<p>Untuk menghidupkan taman, daun pohon dan rumput dibuat bergoyang tertiup angin. Goyangan dihitung <b>di GPU</b>: vertex shader dari <code>MeshStandardMaterial</code> disisipi kode lewat <code>material.onBeforeCompile</code>, sehingga pencahayaan PBR dan bayangan bawaan tetap berfungsi. Besar goyangan sebanding dengan kuadrat tinggi vertex, jadi pangkal batang tetap diam. Rumput sebanyak 6.000 helai dirender dengan satu <code>InstancedMesh</code>: satu geometri dengan 6.000 matriks transformasi, dan hanya <b>1 draw call</b>.</p>
+<pre>material.onBeforeCompile = (shader) =&gt; {
+  shader.uniforms.uTime = uTime;
+  shader.vertexShader = "uniform float uTime;\n" + shader.vertexShader.replace(
+    "#include &lt;begin_vertex&gt;",
+    `#include &lt;begin_vertex&gt;
+     vec4 wp = modelMatrix * vec4(position, 1.0);    // posisi vertex di ruang dunia
+     float h = max(wp.y - minY, 0.0);
+     transformed.x += sin(uTime * 1.8 + phase) * strength * h * h;`);
+};</pre>
+<figure><img src="img/05-shader-angin.jpg"><figcaption>Gambar 5. Demo 5: pohon dan 6.000 helai rumput bergoyang lewat vertex shader.</figcaption></figure>
+
+<h3>3.6 Optimasi: menggabungkan geometri statis</h3>
+<p>Scene kantin berisi ribuan objek kecil (meja, bangku, piring, kursi plastik, dan sebagainya). Setiap <code>Mesh</code> berarti satu <i>draw call</i> ke GPU, sehingga performa cepat turun. Di demo 6 kami membuat 240 set meja dan bangku (1.200 mesh), lalu menggabungkan semua geometri statis yang materialnya sama dengan <code>BufferGeometryUtils.mergeGeometries</code>. Hasilnya diukur dengan <code>renderer.info</code>:</p>
+<table>
+  <tr><th>Mode</th><th>Objek mesh</th><th>Draw call</th></tr>
+  <tr><td>Individual (1 mesh per bagian)</td><td>1.200</td><td>973 (sebagian terpotong frustum culling)</td></tr>
+  <tr><td>Merged per material</td><td>2</td><td>3 (2 mesh + lantai)</td></tr>
+</table>
+<div class="pair">
+  <figure><img src="img/06-individual.jpg"><figcaption>Gambar 6a. Mode individual.</figcaption></figure>
+  <figure><img src="img/06-merged.jpg"><figcaption>Gambar 6b. Mode merged.</figcaption></figure>
+</div>
+<p>Konsekuensinya, objek yang sudah digabung tidak bisa digerakkan satu per satu. Karena itu teknik ini hanya kami pakai untuk objek statis. Objek yang bergerak (orang, daun) tetap menjadi mesh terpisah atau diberi animasi lewat shader.</p>
+
+<h2 class="pb">4. Penerapan pada Model Kantin Asrama ITS</h2>
+<p>Semua teknik di atas diterapkan pada scene final. Struktur kodenya:</p>
+<ul>
+  <li><b><code>layoutSpec.js</code></b>: semua ukuran dan posisi (1 unit = 1 meter, sumbu Y ke atas, −Z = utara) disimpan dalam satu objek data. Modul pembangun (<code>building</code>, <code>stalls</code>, <code>furniture</code>, <code>props</code>, <code>people</code>, <code>outdoor</code>, dll.) membaca spesifikasi ini, jadi perubahan tata letak cukup dilakukan di satu tempat.</li>
+  <li><b>Pencahayaan siang-malam</b> (<code>atmosphere.js</code>): shader langit prosedural (gradasi, matahari, awan fbm, bintang) dipanggang dengan <code>PMREMGenerator</code> menjadi <code>scene.environment</code>, sehingga baja, kaca, dan keramik memantulkan langit yang sesuai jam.</li>
+  <li><b>Pantulan lantai keramik</b> (<code>reflection.js</code>): <code>Reflector</code> dari addon Three.js dengan shader tambahan (Fresnel, sedikit kemiringan acak per ubin, nat yang tidak memantul).</li>
+  <li><b>Post-processing</b> (<code>pipeline.js</code>): <code>EffectComposer</code> → <code>GTAOPass</code> (ambient occlusion di sudut dan di bawah meja) → <code>UnrealBloomPass</code> (lampu berpendar) → <code>OutputPass</code> (tone mapping ACES + sRGB), dengan empat tingkat kualitas.</li>
+  <li><b>Optimasi</b> (<code>optimize.js</code>): mesh statis digabung per material seperti di demo 6. Shadow map hanya dirender ulang saat jam berubah.</li>
+</ul>
+<div class="pair">
+  <figure><img src="img/proyek-overview.jpg"><figcaption>Gambar 7. Tampilan keseluruhan dari atas.</figcaption></figure>
+  <figure><img src="img/proyek-outdoor.jpg"><figcaption>Gambar 8. Sisi luar: area parkir dan dinding kaca.</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="img/proyek-lesehan.jpg"><figcaption>Gambar 9. Hall lesehan dan pantulan lantai.</figcaption></figure>
+  <figure><img src="img/proyek-stalls.jpg"><figcaption>Gambar 10. Deretan kedai dengan papan CanvasTexture.</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="img/proyek-staircase.jpg"><figcaption>Gambar 11. Tangga putar hasil ExtrudeGeometry.</figcaption></figure>
+  <figure><img src="img/proyek-mezz.jpg"><figcaption>Gambar 12. Mezanin lantai 2.</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="img/proyek-steel.jpg"><figcaption>Gambar 13. Sayap meja baja.</figcaption></figure>
+  <figure><img src="img/proyek-night_outdoor.jpg"><figcaption>Gambar 14. Mode malam: langit berbintang dan lampu dengan bloom.</figcaption></figure>
+</div>
+
+<h2>5. Kendala dan Solusi</h2>
+<table>
+  <tr><th style="width:30%">Kendala</th><th>Solusi</th></tr>
+  <tr><td>Tangga tersusun dari box yang tumpang-tindih sehingga terlihat "pecah" (z-fighting, celah di sambungan)</td><td>Dibangun ulang dari profil <code>Shape</code> yang di-extrude dan bordes <code>absarc</code> (subbab 3.3)</td></tr>
+  <tr><td>Tulisan pada papan terpotong di tepi</td><td>Ukuran font disesuaikan otomatis saat menggambar ke canvas (subbab 3.4)</td></tr>
+  <tr><td>FPS rendah karena terlalu banyak draw call</td><td>Penggabungan geometri statis per material dan InstancedMesh (subbab 3.5–3.6)</td></tr>
+  <tr><td>Tata letak tidak sesuai foto: tangga menutup jalan dari kantor asrama, lorong kedai terlalu sempit</td><td>Ukuran dipusatkan di <code>layoutSpec.js</code>, lalu posisi tangga dan lebar lorong diubah berdasarkan foto referensi</td></tr>
+</table>
+<div class="pair">
+  <figure><img src="img/sebelum-tangga.jpg"><figcaption>Gambar 15a. Sebelum: tangga dari tumpukan box dan menghalangi jalan.</figcaption></figure>
+  <figure><img src="img/proyek-staircase.jpg"><figcaption>Gambar 15b. Sesudah: tangga solid dan jalur ke Wing B terbuka.</figcaption></figure>
+</div>
+
+<h2>6. Kesimpulan dan Rencana Lanjutan</h2>
+<p>Three.js menyediakan semua yang kami butuhkan untuk memodelkan kantin asrama secara prosedural: primitif dan <code>ExtrudeGeometry</code> untuk bentuk, material PBR dan berbagai sumber cahaya, tekstur dari canvas, akses ke shader melalui <code>onBeforeCompile</code>, serta addon post-processing dan utilitas geometri untuk kualitas dan performa. Dari eksplorasi ini kami belajar bahwa memilih teknik pemodelan yang tepat (solid tertutup lawan tumpukan box) dan mengurangi draw call sama pentingnya dengan detail visual.</p>
+<p>Rencana lanjutan:</p>
+<ul>
+  <li>Menyelaraskan sisa detail dengan foto referensi (dinding utara, isi papan pengumuman).</li>
+  <li>Menambahkan interaksi, misalnya informasi saat objek diklik (raycasting).</li>
+  <li>Mengukur performa di laptop spesifikasi rendah dan menyesuaikan preset kualitas.</li>
+</ul>
+
+<h2>Lampiran: Daftar Demo Eksplorasi</h2>
+<table>
+  <tr><th>File</th><th>Topik</th></tr>
+  <tr><td><code>eksplorasi/01-dasar.html</code></td><td>Scene, kamera, renderer, OrbitControls, primitif, Group</td></tr>
+  <tr><td><code>eksplorasi/02-material-cahaya.html</code></td><td>Jenis material, PBR roughness/metalness, jenis cahaya, bayangan</td></tr>
+  <tr><td><code>eksplorasi/03-extrude-tangga.html</code></td><td>Shape, ExtrudeGeometry, absarc, toCreasedNormals</td></tr>
+  <tr><td><code>eksplorasi/04-canvas-texture.html</code></td><td>CanvasTexture dan auto-fit teks</td></tr>
+  <tr><td><code>eksplorasi/05-shader-angin.html</code></td><td>onBeforeCompile (vertex shader) dan InstancedMesh</td></tr>
+  <tr><td><code>eksplorasi/06-optimasi-merge.html</code></td><td>mergeGeometries dan pengukuran draw call dengan renderer.info</td></tr>
+</table>
+<p>Repositori: <code>github.com/ArtanisPlays/grafkomfinalpraktikum</code> (branch <code>eksplorasi</code>).</p>
+
+</body>
+</html>
